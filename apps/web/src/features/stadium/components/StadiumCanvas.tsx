@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
+import { SeatVisibilityProbe } from '@/features/seating/components/SeatVisibilityProbe';
 import { SectorOverlay } from '@/features/seating/components/SectorOverlay';
 import { getPreset, DEFAULT_PRESET } from '@/features/stadium/cameraPresets';
 import { CameraRig } from './CameraRig';
@@ -27,6 +28,8 @@ export function StadiumCanvas() {
         <StadiumModel />
         {/* Setores dentro do mesmo Suspense: só aparecem junto com o estádio. */}
         <SectorOverlay />
+        {/* Testa, com raios, quanto do campo se vê da cadeira da visão do assento. */}
+        <SeatVisibilityProbe />
       </Suspense>
 
       <CameraRig />

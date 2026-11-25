@@ -5,6 +5,11 @@ import { getCategory, isAwaySector } from '@/features/seating/data/sectors';
 import { getSectorSeats } from '@/features/seating/lib/seatLayout';
 import { neighborSeat, type SeatDirection } from '@/features/seating/lib/seatNavigation';
 import { formatPrice } from '@/features/seating/lib/pricing';
+import {
+  classifyVisibility,
+  seatMetrics,
+  type VisibilityLevel,
+} from '@/features/seating/lib/seatView';
 import { SEAT_VIEW } from '@/config/stadium';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
@@ -41,6 +46,7 @@ function Hud({ seatId }: { seatId: string }) {
   const model = useStandsStore((s) => s.model);
   const zoom = useSeatViewStore((s) => s.zoom);
   const showSeatsForSale = useSeatViewStore((s) => s.showSeatsForSale);
+  const visibilityResult = useSeatViewStore((s) => s.visibility);
   const selectedIds = useSeatStore((s) => s.selectedSeatIds);
   const [limitHit, setLimitHit] = useState(false);
   const panel = useRef<HTMLElement>(null);
@@ -98,6 +104,12 @@ function Hud({ seatId }: { seatId: string }) {
   const selected = selectedIds.includes(seat.id);
   const away = isAwaySector(sector);
   const has = (d: SeatDirection) => neighborSeat(sectorSeats, seat, d) !== null;
+  const metrics = seatMetrics(seat.eye);
+  // Só vale o resultado desta cadeira (ao trocar, o anterior fica "velho" até o novo cálculo).
+  const visibility =
+    visibilityResult?.seatId === seat.id
+      ? classifyVisibility(visibilityResult.blocked, visibilityResult.total)
+      : null;
   const { moveSeatView, exitSeatView, zoomBy, setShowSeatsForSale } = useSeatViewStore.getState();
 
   return (
@@ -145,6 +157,22 @@ function Hud({ seatId }: { seatId: string }) {
           {formatPrice(category.price)}
         </span>
         <StatusChip sold={sold} selected={selected} />
+      </p>
+
+      <dl className="mt-3 grid grid-cols-4 gap-1.5 text-center">
+        <Metric label="Meio-campo" value={`${meters(metrics.centerDistance)} m`} />
+        <Metric label="Gol mais perto" value={`${meters(metrics.goalDistance)} m`} />
+        <Metric label="Altura" value={`${meters(metrics.height)} m`} />
+        <Metric label="Ângulo do campo" value={`${Math.round(metrics.fieldAngleDeg)}°`} />
+      </dl>
+      <p className="mt-2 flex items-center gap-2 text-xs" aria-live="polite">
+        <span
+          className={`size-2 shrink-0 rounded-full ${visibility ? VISIBILITY_DOT[visibility.level] : 'animate-pulse bg-white/40'}`}
+          aria-hidden
+        />
+        <span className={visibility ? 'text-white/85' : 'text-white/50'}>
+          {visibility ? visibility.label : 'Calculando visibilidade do campo…'}
+        </span>
       </p>
 
       <div className="mt-3 flex items-center gap-3">
@@ -275,6 +303,25 @@ function toggleViewingSeat(): boolean {
   const found = id ? findSeat(id, useStandsStore.getState().model) : null;
   if (!found || found.seat.status === 'sold') return true;
   return useSeatStore.getState().toggleSeat(found.seat.id);
+}
+
+const VISIBILITY_DOT: Record<VisibilityLevel, string> = {
+  clear: 'bg-emerald-400',
+  minor: 'bg-lime-300',
+  partial: 'bg-amber-300',
+  heavy: 'bg-rose-400',
+};
+
+const meterFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+const meters = (m: number) => meterFormat.format(m);
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-white/5 px-1 py-1.5">
+      <dd className="text-sm font-bold tabular-nums">{value}</dd>
+      <dt className="text-[10px] leading-tight text-white/55">{label}</dt>
+    </div>
+  );
 }
 
 function StatusChip({ sold, selected }: { sold: boolean; selected: boolean }) {

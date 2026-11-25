@@ -167,6 +167,19 @@ export const SEAT_VIEW = {
   zoomStep: 0.25,
   /** O alvo inicial do olhar fica pelo menos a esta distância das linhas do campo. */
   fieldMargin: 4,
+  /**
+   * Visibilidade do campo: uma grade de pontos sobre o gramado (colunas na largura × linhas no
+   * comprimento = 60 raios), a esta altura acima da grama (m), mais ou menos a da bola e dos pés.
+   */
+  visibilityGrid: { cols: 6, rows: 10 },
+  visibilitySampleHeight: 0.3,
+  /** Um raio só conta como bloqueado se bater em algo antes de chegar a esta distância do ponto (m). */
+  visibilityTolerance: 0.5,
+  /**
+   * Os raios começam um pouco à frente dos olhos (m): o que estiver mais perto que isso seria a
+   * própria cabeça encostando (ex.: cadeiras geradas rentes a uma divisória de camarote).
+   */
+  visibilityNear: 0.25,
 } as const;
 
 /** Limites da câmera orbital para o usuário não "atravessar" o estádio. */

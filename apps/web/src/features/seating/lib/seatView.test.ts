@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { PITCH, SEAT_VIEW } from '@/config/stadium';
-import { initialLookTarget, isWithinTurn, seatAzimuthRange, wrapAngle } from './seatView';
+import {
+  classifyVisibility,
+  fieldSamplePoints,
+  initialLookTarget,
+  isWithinTurn,
+  seatAzimuthRange,
+  seatMetrics,
+  wrapAngle,
+} from './seatView';
 
 const halfW = PITCH.width / 2 - SEAT_VIEW.fieldMargin;
 const halfL = PITCH.length / 2 - SEAT_VIEW.fieldMargin;
@@ -60,5 +68,55 @@ describe('isWithinTurn', () => {
     expect(isWithinTurn(0, [0, 1])).toBe(true);
     expect(isWithinTurn(0, [1, 0])).toBe(true); // 90°
     expect(isWithinTurn(0, [0, -1])).toBe(false); // 180°
+  });
+});
+
+describe('seatMetrics', () => {
+  it('fila 1 da lateral: perto do meio-campo, baixo e com o campo bem largo', () => {
+    const m = seatMetrics([-46.9, 1.3, -16.9]);
+    expect(m.height).toBeCloseTo(1.3);
+    expect(m.centerDistance).toBeCloseTo(Math.hypot(46.9, 1.3, 16.9));
+    expect(m.goalDistance).toBeCloseTo(Math.hypot(46.9, 1.3, 52.5 - 16.9));
+    expect(m.fieldAngleDeg).toBeGreaterThan(120);
+  });
+
+  it('quanto mais longe, menor o ângulo que o campo ocupa', () => {
+    const near = seatMetrics([-50, 5, 0]).fieldAngleDeg;
+    const far = seatMetrics([-90, 35, 0]).fieldAngleDeg;
+    expect(far).toBeLessThan(near);
+  });
+
+  it('atrás do gol: o gol mais perto é o da mesma cabeceira', () => {
+    const m = seatMetrics([0, 10, -70]);
+    expect(m.goalDistance).toBeCloseTo(Math.hypot(10, 70 - 52.5));
+  });
+});
+
+describe('fieldSamplePoints', () => {
+  it('gera cols × rows pontos, todos dentro do campo e na altura pedida', () => {
+    const points = fieldSamplePoints(6, 10, 0.3);
+    expect(points).toHaveLength(60);
+    for (const [x, y, z] of points) {
+      expect(Math.abs(x)).toBeLessThan(PITCH.width / 2);
+      expect(Math.abs(z)).toBeLessThan(PITCH.length / 2);
+      expect(y).toBe(0.3);
+    }
+  });
+});
+
+describe('classifyVisibility', () => {
+  it('classifica pela fração de raios bloqueados', () => {
+    expect(classifyVisibility(0, 60)).toMatchObject({ level: 'clear', label: 'Visão livre' });
+    expect(classifyVisibility(1, 60).level).toBe('clear'); // um raio rente não muda nada
+    expect(classifyVisibility(3, 60)).toMatchObject({ level: 'minor', blockedPercent: 5 });
+    expect(classifyVisibility(12, 60)).toMatchObject({
+      level: 'partial',
+      label: 'Visão parcialmente obstruída (20%)',
+    });
+    expect(classifyVisibility(30, 60).level).toBe('heavy');
+  });
+
+  it('sem raios não divide por zero', () => {
+    expect(classifyVisibility(0, 0).level).toBe('clear');
   });
 });

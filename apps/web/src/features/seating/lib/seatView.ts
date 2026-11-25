@@ -78,6 +78,107 @@ export function isWithinTurn(yaw: number, dir: [x: number, z: number]): boolean 
   return angle <= (SEAT_VIEW.turnDeg * Math.PI) / 180;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Métricas da visão
+// ---------------------------------------------------------------------------------------------
+
+export interface SeatMetrics {
+  /** Distância dos olhos até o centro do campo (m). */
+  centerDistance: number;
+  /** Distância dos olhos até o gol mais próximo (centro da linha de gol, no chão) (m). */
+  goalDistance: number;
+  /** Altura dos olhos em relação ao gramado (m). */
+  height: number;
+  /** Quantos graus de largura o campo ocupa a partir da cadeira (de um canto ao outro). */
+  fieldAngleDeg: number;
+}
+
+/**
+ * Métricas a partir do ponto dos olhos. O gramado está em y = 0 e o centro do campo é a origem.
+ *
+ * Ângulo de visão do campo: medimos, no chão, o ângulo de cada um dos 4 cantos visto dos olhos e
+ * pegamos a diferença entre o mais à esquerda e o mais à direita. Os ângulos são medidos em relação
+ * à direção do centro do campo, para nenhum deles "dar a volta" (passar de 180°).
+ */
+export function seatMetrics(eye: Point3): SeatMetrics {
+  const [ex, ey, ez] = eye;
+  const halfW = PITCH.width / 2;
+  const halfL = PITCH.length / 2;
+  const toCenter = Math.atan2(-ex, -ez);
+  const corners = [
+    [-halfW, -halfL],
+    [halfW, -halfL],
+    [-halfW, halfL],
+    [halfW, halfL],
+  ].map(([cx, cz]) => wrapAngle(Math.atan2(cx - ex, cz - ez) - toCenter));
+  return {
+    centerDistance: Math.hypot(ex, ey, ez),
+    goalDistance: Math.min(Math.hypot(ex, ey, ez - halfL), Math.hypot(ex, ey, ez + halfL)),
+    height: ey,
+    fieldAngleDeg: ((Math.max(...corners) - Math.min(...corners)) * 180) / Math.PI,
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Visibilidade do campo
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Pontos espalhados pelo gramado para testar a visibilidade: o centro de cada célula de uma
+ * grade cols × rows sobre o campo, um pouco acima da grama.
+ */
+export function fieldSamplePoints(
+  cols: number = SEAT_VIEW.visibilityGrid.cols,
+  rows: number = SEAT_VIEW.visibilityGrid.rows,
+  height: number = SEAT_VIEW.visibilitySampleHeight,
+): Point3[] {
+  const points: Point3[] = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      points.push([
+        ((i + 0.5) / cols - 0.5) * PITCH.width,
+        height,
+        ((j + 0.5) / rows - 0.5) * PITCH.length,
+      ]);
+    }
+  }
+  return points;
+}
+
+export type VisibilityLevel = 'clear' | 'minor' | 'partial' | 'heavy';
+
+export interface Visibility {
+  level: VisibilityLevel;
+  /** Porcentagem (0 a 100, inteira) dos pontos do campo escondidos por alguma estrutura. */
+  blockedPercent: number;
+  label: string;
+}
+
+/** Até quanto (fração) de raios bloqueados ainda conta como "visão livre": 1 ou 2 raios rentes. */
+const CLEAR_MAX = 0.03;
+const MINOR_MAX = 0.12;
+const PARTIAL_MAX = 0.35;
+
+/** Transforma "x de y raios bloqueados" num nível e num texto para a interface. */
+export function classifyVisibility(blocked: number, total: number): Visibility {
+  const share = total > 0 ? blocked / total : 0;
+  const blockedPercent = Math.round(share * 100);
+  if (share <= CLEAR_MAX) return { level: 'clear', blockedPercent, label: 'Visão livre' };
+  if (share <= MINOR_MAX)
+    return {
+      level: 'minor',
+      blockedPercent,
+      label: `Visão quase livre (${blockedPercent}% obstruída)`,
+    };
+  if (share <= PARTIAL_MAX)
+    return {
+      level: 'partial',
+      blockedPercent,
+      label: `Visão parcialmente obstruída (${blockedPercent}%)`,
+    };
+  return { level: 'heavy', blockedPercent, label: `Visão bastante obstruída (${blockedPercent}%)` };
+}
+
 function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max);
 }
