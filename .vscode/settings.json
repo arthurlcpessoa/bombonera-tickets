@@ -1,0 +1,22 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit"
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "tailwindCSS.experimental.configFile": "apps/web/src/index.css",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "assets-src": true,
+    "package-lock.json": true
+  },
+  "files.exclude": {
+    "**/*.tsbuildinfo": true
+  }
+}

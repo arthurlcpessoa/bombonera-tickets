@@ -1,0 +1,30 @@
+# Dependências e builds
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+
+# Modelo 3D bruto (pesado). Veja docs/MODELO-3D.md para baixar.
+assets-src/**
+!assets-src/README.md
+
+# Ambiente
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / SO
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+.DS_Store
+Thumbs.db
