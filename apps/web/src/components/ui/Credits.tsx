@@ -29,7 +29,8 @@ export function Credits() {
       >
         CC BY 4.0
       </a>
-      . Projeto de estudo, sem vínculo com o Club Atlético Boca Juniors.
+      . Projeto de estudo, sem vínculo com o Club Atlético Boca Juniors nem com o Club Atlético
+      River Plate.
     </footer>
   );
 }

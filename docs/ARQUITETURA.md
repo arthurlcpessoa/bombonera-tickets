@@ -26,6 +26,19 @@ como dois setores de uma empresa que se comunicam por um quadro de avisos:
 Exemplo: clicar num setor chama `selectSector('upper-3')`. O painel HTML lê o setor escolhido e abre;
 o `CameraRig`, que "assina" o store com `subscribe()`, calcula o enquadramento e voa até ele.
 
+### O jogo à venda (`features/match`)
+
+O topo da tela mostra o jogo do ingresso (`components/ui/MatchInfo.tsx`, que é o `h1` da página).
+A partida é **fictícia**: Boca Juniors × River Plate, Campeonato Argentino, domingo 13/12/2026, 17h00.
+Os dados ficam em `match/data/match.ts` (na Fase 5 virão da API) e `match/lib/formatKickoff.ts`
+formata data e hora sempre no fuso de Buenos Aires, o horário impresso no ingresso, seja qual for o
+fuso de quem abre o site.
+
+Os times aparecem só pelos escudos (`src/assets/teams/*.webp`, reduzidos para 160 px de altura). O
+nome de cada time fica no `alt` da imagem, e o leitor de tela lê "Boca Juniors contra River Plate".
+Os escudos são marcas registradas dos clubes: o projeto é só de portfólio, sem vínculo com eles,
+como dizem o selo do topo e os créditos.
+
 ## Sistema de coordenadas
 
 O script `scripts/optimize-model.mjs` move o modelo para que **o centro do gramado fique em (0, 0, 0)**.

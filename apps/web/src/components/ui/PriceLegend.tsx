@@ -14,7 +14,7 @@ export function PriceLegend() {
   return (
     <aside
       aria-label="Legenda de preços"
-      className="glass-card absolute top-20 left-4 w-56 rounded-3xl text-sm sm:top-24"
+      className="glass-card absolute top-36 left-4 w-56 rounded-3xl text-sm sm:top-44"
     >
       <button
         type="button"
