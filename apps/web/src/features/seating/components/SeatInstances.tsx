@@ -8,6 +8,7 @@ import { getSectorSeats, type Seat } from '@/features/seating/lib/seatLayout';
 import { createSeatMarkerGeometry } from '@/features/seating/lib/seatGeometry';
 import type { StandsModel } from '@/features/seating/lib/sectorGeometry';
 import { useSeatStore } from '@/store/useSeatStore';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useStandsStore } from '@/store/useStandsStore';
 import { isDragGesture, supportsHover } from './pointerRules';
@@ -161,6 +162,17 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
     useSeatStore.getState().toggleSeat(seat.id);
   };
 
+  /**
+   * Duplo clique = ver a visão daquela cadeira (também das vendidas: dá para espiar).
+   * Os dois cliques do duplo clique também chegam em handleClick e se anulam (escolhe e desfaz).
+   */
+  const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    const seat = seatAt(e);
+    if (!seat || isDragGesture(e)) return;
+    useSeatViewStore.getState().enterSeatView(seat.id);
+  };
+
   return (
     <instancedMesh
       ref={meshRef}
@@ -168,6 +180,7 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
       onPointerOver={handleOver}
       onPointerOut={handleOut}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     />
   );
 }

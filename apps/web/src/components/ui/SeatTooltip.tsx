@@ -73,6 +73,7 @@ export function SeatTooltip() {
         <AwayBadge />
       </p>
       <p ref={price} />
+      <p className="mt-1 text-[11px] text-white/50">Duplo clique: ver a visão do assento</p>
     </div>
   );
 }

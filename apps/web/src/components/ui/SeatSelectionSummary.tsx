@@ -4,6 +4,7 @@ import { getCategory, getSector, isAwaySector, type Sector } from '@/features/se
 import { parseSeatId } from '@/features/seating/lib/seatLayout';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore } from '@/store/useSeatStore';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { AwayBadge } from './AwayBadge';
 
 /** Por quanto tempo (ms) o aviso de limite fica na tela. */
@@ -57,6 +58,9 @@ export function SeatSelectionSummary() {
   const count = selectedIds.length;
   const countLabel = `${count} ${count === 1 ? 'cadeira' : 'cadeiras'}`;
   const { removeSeat, clearSeats } = useSeatStore.getState();
+  const { enterSeatView } = useSeatViewStore.getState();
+  // O botão geral abre a última cadeira escolhida.
+  const lastSeatId = selectedIds.at(-1);
 
   return (
     <section
@@ -102,6 +106,25 @@ export function SeatSelectionSummary() {
                     <span className="ml-auto tabular-nums">{formatPrice(seat.price)}</span>
                     <button
                       type="button"
+                      onClick={() => enterSeatView(seat.id)}
+                      aria-label={`Ver a visão da fila ${seat.row}, cadeira ${seat.number} do setor ${sector.name}`}
+                      title="Ver a visão desta cadeira"
+                      className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="size-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden
+                      >
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => removeSeat(seat.id)}
                       aria-label={`Remover fila ${seat.row}, cadeira ${seat.number} do setor ${sector.name}${isAwaySector(sector) ? ' (torcida visitante)' : ''}`}
                       className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
@@ -136,7 +159,13 @@ export function SeatSelectionSummary() {
         </p>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <DisabledAction label="Ver visão do assento" badge="Fase 4" />
+          <button
+            type="button"
+            onClick={() => lastSeatId && enterSeatView(lastSeatId)}
+            className="bg-boca-gold text-boca-navy flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 text-sm leading-tight font-bold hover:brightness-110"
+          >
+            Ver visão do assento
+          </button>
           <DisabledAction label="Continuar" badge="Em breve" />
           <button
             type="button"

@@ -3,6 +3,7 @@ import { getCategory, type Sector } from '@/features/seating/data/sectors';
 import { getSectorSeats, seatsByRow, type Seat } from '@/features/seating/lib/seatLayout';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore } from '@/store/useSeatStore';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';
 
 interface SeatMapProps {
@@ -42,6 +43,8 @@ export function SeatMap({ sector }: SeatMapProps) {
   const [focusId, setFocusId] = useState(
     () => seats.find((s) => s.status === 'available')?.id ?? seats[0]?.id,
   );
+  // A "cadeira em destaque" do mapa: a que tem o foco (do teclado ou do último clique).
+  const focusedSeat = focusId ? byId.get(focusId) : undefined;
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const caption = useRef<HTMLParagraphElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
@@ -107,6 +110,11 @@ export function SeatMap({ sector }: SeatMapProps) {
       case 'End':
         next = row.at(-1);
         break;
+      case 'v':
+      case 'V': // "ver": abre a visão do assento da cadeira com foco
+        e.preventDefault();
+        useSeatViewStore.getState().enterSeatView(current.id);
+        return;
       default:
         return; // Enter e Espaço já "clicam" no botão sozinhos
     }
@@ -188,6 +196,29 @@ export function SeatMap({ sector }: SeatMapProps) {
         </p>
         <span className="shrink-0">▼ campo</span>
       </div>
+      {focusedSeat && (
+        <button
+          type="button"
+          onClick={() => useSeatViewStore.getState().enterSeatView(focusedSeat.id)}
+          className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden
+          >
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Ver visão da fila {focusedSeat.row}, cadeira {focusedSeat.number}
+          <kbd className="rounded border border-white/15 px-1 text-[10px] font-normal text-white/60 pointer-coarse:hidden">
+            V
+          </kbd>
+        </button>
+      )}
     </div>
   );
 }
