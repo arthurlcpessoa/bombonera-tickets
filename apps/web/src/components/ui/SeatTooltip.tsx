@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { findSeat } from '@/features/seating/data/seats';
-import { getCategory } from '@/features/seating/data/sectors';
+import { getCategory, isAwaySector } from '@/features/seating/data/sectors';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore, type HoverSource } from '@/store/useSeatStore';
 import { useStandsStore } from '@/store/useStandsStore';
+import { AwayBadge } from './AwayBadge';
 import { placeNearPointer, usePointerFollower } from './pointerFollower';
 
 /**
@@ -18,6 +19,7 @@ export function SeatTooltip() {
   const title = useRef<HTMLParagraphElement>(null);
   const subtitle = useRef<HTMLParagraphElement>(null);
   const price = useRef<HTMLParagraphElement>(null);
+  const away = useRef<HTMLParagraphElement>(null);
 
   usePointerFollower(box);
 
@@ -28,7 +30,7 @@ export function SeatTooltip() {
       selectedSeatIds: string[];
     }) => {
       const el = box.current;
-      if (!el || !title.current || !subtitle.current || !price.current) return;
+      if (!el || !title.current || !subtitle.current || !price.current || !away.current) return;
       // Só o hover vindo do 3D: o do mini-mapa já mostra as informações no próprio painel.
       const found =
         state.hoveredSeatId && state.hoverSource === 'scene'
@@ -43,6 +45,7 @@ export function SeatTooltip() {
       const selected = state.selectedSeatIds.includes(seat.id);
       title.current.textContent = `Fila ${seat.row} · Cadeira ${seat.number}`;
       subtitle.current.textContent = sector.name + (selected ? ' · escolhida' : '');
+      away.current.hidden = !isAwaySector(sector);
       price.current.textContent = sold
         ? 'Vendida'
         : formatPrice(getCategory(sector.categoryId).price);
@@ -65,6 +68,10 @@ export function SeatTooltip() {
     >
       <p ref={title} className="font-bold" />
       <p ref={subtitle} className="text-xs text-white/60" />
+      {/* O selo já existe no DOM; o subscribe só mostra/esconde (hidden). */}
+      <p ref={away} hidden className="mt-1">
+        <AwayBadge />
+      </p>
       <p ref={price} />
     </div>
   );

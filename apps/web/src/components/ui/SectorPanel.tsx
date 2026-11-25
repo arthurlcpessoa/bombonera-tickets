@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { getCategory, getSector, TIER_LABELS } from '@/features/seating/data/sectors';
+import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@/features/seating/data/sectors';
 import {
   availabilityLevel,
   formatAvailability,
@@ -8,6 +8,7 @@ import {
 } from '@/features/seating/lib/pricing';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useViewStore } from '@/store/useViewStore';
+import { AwayBadge } from './AwayBadge';
 import { SeatMap } from './SeatMap';
 
 const AVAILABILITY_COLOR: Record<AvailabilityLevel, string> = {
@@ -46,6 +47,7 @@ export function SectorPanel() {
   if (!sector) return null;
   const category = getCategory(sector.categoryId);
   const level = availabilityLevel(sector.available, sector.capacity);
+  const away = isAwaySector(sector);
 
   return (
     <section
@@ -67,6 +69,7 @@ export function SectorPanel() {
           <h2 id="sector-panel-title" className="text-xl font-extrabold tracking-tight md:text-2xl">
             {sector.name}
           </h2>
+          {away && <AwayBadge className="mt-1" />}
         </div>
         <button
           ref={closeButton}
@@ -101,6 +104,12 @@ export function SectorPanel() {
           </dd>
         </div>
       </dl>
+
+      {away && (
+        <p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">
+          Setor exclusivo para a torcida visitante. Acesso por entrada separada.
+        </p>
+      )}
 
       <div className="mt-3">
         {/* key: ao trocar de setor, o mapa começa do zero (foco, rolagem). */}

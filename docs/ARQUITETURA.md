@@ -110,6 +110,14 @@ platea dos palcos, um retângulo inclinado).
   Os palcos seguem os corredores (escadas) **reais** do modelo, medidos na Fase 3 (`PALCOS_BLOCKS_Z`).
 - Faixas de preço com cor própria (`PRICE_CATEGORIES`). As cores evitam azul e amarelo, as cores
   das cadeiras do modelo, para não "sumirem" quando misturadas a elas.
+- **Torcida visitante:** o bloco 8 da bandeja superior (id `upper-8`, nome "Visitante") é o setor da
+  torcida visitante. Isso é um **dado**, não uma regra no código: o setor tem `audience: 'away'`
+  (ausente = `'home'`) e a interface pergunta `isAwaySector(sector)`, nunca o id. O ajuste é feito em
+  `SECTOR_OVERRIDES`, por cima do setor gerado; o id não muda, porque os ids das cadeiras
+  (`upper-8:F12-C07`) dependem dele. O setor tem faixa própria, `visitante` (mesmo preço da Superior,
+  cor verde-limão `#a3e635`, a mais distante das outras quatro, pura e misturada ao azul das cadeiras),
+  e a interface mostra o selo "Torcida visitante" no tooltip, no painel e no resumo da seleção. As
+  cadeiras continuam selecionáveis normalmente.
 - Capacidade e lugares livres = **contagem das cadeiras geradas** (veja "Como as cadeiras funcionam").
 
 ### 5. Interação

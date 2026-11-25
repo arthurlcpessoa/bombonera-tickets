@@ -17,7 +17,10 @@ import { DEFAULT_STANDS_MODEL } from './standsModel';
 /** Os quatro "andares" à venda: as três bandejas do U + a platea dos palcos. */
 export type Tier = CurvedTier | 'palcos';
 
-export type PriceCategoryId = 'superior' | 'media' | 'inferior' | 'palcos';
+export type PriceCategoryId = 'superior' | 'visitante' | 'media' | 'inferior' | 'palcos';
+
+/** De quem é o setor: da torcida da casa (o padrão) ou da torcida visitante. */
+export type Audience = 'home' | 'away';
 
 /** Faixa de preço: cada uma tem uma cor própria no 3D e na legenda. */
 export interface PriceCategory {
@@ -35,6 +38,8 @@ export interface Sector {
   name: string;
   tier: Tier;
   categoryId: PriceCategoryId;
+  /** Torcida do setor. Ausente = 'home' (casa). Use isAwaySector() para ler. */
+  audience?: Audience;
   shape: SectorShape;
   /** Capacidade = número de cadeiras geradas para o setor. */
   capacity: number;
@@ -48,6 +53,8 @@ export const PRICE_CATEGORIES: readonly PriceCategory[] = [
   // superior), amarelas (média) e bordô (palcos). Evitamos azul e amarelo (sumiriam) e usamos
   // tons que continuam parecidos com a legenda depois de "misturados" com a cor de baixo.
   { id: 'superior', label: 'Superior', price: 35_000, color: '#2dd4bf' },
+  // Verde-limão: a cor mais distante das outras quatro, pura e misturada ao azul das cadeiras.
+  { id: 'visitante', label: 'Visitante', price: 35_000, color: '#a3e635' },
   { id: 'media', label: 'Média', price: 50_000, color: '#fb923c' },
   { id: 'inferior', label: 'Inferior', price: 65_000, color: '#c084fc' },
   { id: 'palcos', label: 'Palcos', price: 90_000, color: '#f472b6' },
@@ -115,12 +122,21 @@ function palcosSectors(): SectorDraft[] {
   }));
 }
 
+/**
+ * Ajustes pontuais por setor, aplicados por cima do que foi gerado. O id NÃO muda: os ids das
+ * cadeiras ("upper-8:F12-C07") dependem dele.
+ */
+const SECTOR_OVERRIDES: Record<string, Partial<SectorDraft>> = {
+  // Ponta +Z da bandeja superior: setor da torcida visitante.
+  'upper-8': { name: 'Visitante', categoryId: 'visitante', audience: 'away' },
+};
+
 /** Monta a lista final: capacidade e lugares livres vêm da contagem real das cadeiras. */
 function buildSectors(): Sector[] {
-  return [...curvedSectors(), ...palcosSectors()].map((draft) => ({
-    ...draft,
-    ...countSeats(getSectorSeats(draft, DEFAULT_STANDS_MODEL)),
-  }));
+  return [...curvedSectors(), ...palcosSectors()].map((generated) => {
+    const draft = { ...generated, ...SECTOR_OVERRIDES[generated.id] };
+    return { ...draft, ...countSeats(getSectorSeats(draft, DEFAULT_STANDS_MODEL)) };
+  });
 }
 
 export const SECTORS: readonly Sector[] = buildSectors();
@@ -129,4 +145,9 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 export function getSector(id: string): Sector | undefined {
   return SECTOR_BY_ID.get(id);
+}
+
+/** O setor é da torcida visitante? A interface pergunta isto, nunca o id. */
+export function isAwaySector(sector: Pick<Sector, 'audience'>): boolean {
+  return sector.audience === 'away';
 }

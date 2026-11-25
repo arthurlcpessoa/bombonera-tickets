@@ -1,9 +1,10 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { ORDER_RULES } from '@/config/stadium';
-import { getCategory, getSector, type Sector } from '@/features/seating/data/sectors';
+import { getCategory, getSector, isAwaySector, type Sector } from '@/features/seating/data/sectors';
 import { parseSeatId } from '@/features/seating/lib/seatLayout';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore } from '@/store/useSeatStore';
+import { AwayBadge } from './AwayBadge';
 
 /** Por quanto tempo (ms) o aviso de limite fica na tela. */
 const LIMIT_NOTICE_MS = 4000;
@@ -88,8 +89,9 @@ export function SeatSelectionSummary() {
         <div className="mt-2 max-h-36 space-y-3 overflow-y-auto md:max-h-28">
           {groups.map(({ sector, seats }) => (
             <div key={sector.id}>
-              <p className="text-xs font-medium tracking-wide text-white/60 uppercase">
+              <p className="flex flex-wrap items-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase">
                 {sector.name}
+                {isAwaySector(sector) && <AwayBadge />}
               </p>
               <ul className="mt-1 space-y-1">
                 {seats.map((seat) => (
@@ -101,7 +103,7 @@ export function SeatSelectionSummary() {
                     <button
                       type="button"
                       onClick={() => removeSeat(seat.id)}
-                      aria-label={`Remover fila ${seat.row}, cadeira ${seat.number} do setor ${sector.name}`}
+                      aria-label={`Remover fila ${seat.row}, cadeira ${seat.number} do setor ${sector.name}${isAwaySector(sector) ? ' (torcida visitante)' : ''}`}
                       className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
                     >
                       <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
