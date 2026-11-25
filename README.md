@@ -11,8 +11,8 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 | ---- | ------------------------------------------------------------- | ------------ |
 | 1    | Setup do projeto + estádio 3D navegável                       | ✅ Concluída |
 | 2    | Setores interativos (hover, preço, câmera voando até o setor) | ✅ Concluída |
-| 3    | Cadeiras geradas por código (InstancedMesh) e seleção         | ⏳ Próxima   |
-| 4    | Visão do assento em primeira pessoa                           | —            |
+| 3    | Cadeiras geradas por código (InstancedMesh) e seleção         | ✅ Concluída |
+| 4    | Visão do assento em primeira pessoa                           | ⏳ Próxima   |
 | 5    | Back-end: API, banco, reserva temporária, checkout (sandbox)  | —            |
 | 6    | Acabamento: mobile, desempenho, deploy                        | —            |
 
@@ -24,8 +24,9 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 - **Zustand**: estado global (visão ativa, setor escolhido; depois cadeira e carrinho)
 - **Tailwind CSS 4**: estilo da interface sobre o canvas
 - **glTF Transform + meshoptimizer + sharp**: pipeline de otimização do modelo 3D
-- **three-mesh-bvh**: raycasting rápido no script que mede as arquibancadas
+- **three-mesh-bvh**: raycasting rápido (script de medição e bloqueio do ponteiro pelo estádio)
 - **leva**: painel de calibração do modo `?debug` (carregado sob demanda)
+- **Vitest**: testes automatizados das funções puras
 - **oxlint + Prettier**: qualidade e formatação de código
 
 ## Como rodar
@@ -46,6 +47,7 @@ Abra <http://localhost:5173>. Para o painel de calibração dos setores, abra <h
 | `npm run preview`          | Serve o build de produção localmente                        |
 | `npm run lint`             | Lint com oxlint                                             |
 | `npm run typecheck`        | Checagem de tipos do TypeScript                             |
+| `npm test`                 | Testes automatizados (Vitest) das funções de geometria      |
 | `npm run format`           | Formata todo o código com Prettier                          |
 | `npm run model:optimize`   | Regera `bombonera.glb` a partir do modelo bruto (veja docs) |
 | `npm run stands:probe`     | Mede o modelo 3D (perfis das arquibancadas; veja docs)      |
@@ -63,6 +65,9 @@ Formatação e correções de lint rodam ao salvar. Em **Run and Debug**, use _"
    descreve a planta das bandejas, um perfil descreve a inclinação de cada uma, e uma tabela medida
    no próprio modelo corrige as diferenças. Cada setor vira uma superfície translúcida colorida pela
    faixa de preço. Passe o mouse para ver preço e disponibilidade; clique para a câmera voar até ele.
+3. **Cadeiras:** no setor escolhido aparecem as cadeiras (29 mil no estádio, geradas sobre a mesma
+   superfície do setor), com fila, número e status. Escolha até 6 no 3D ou no mini-mapa (que também
+   funciona só com o teclado) e veja o resumo com o total.
 
 Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 

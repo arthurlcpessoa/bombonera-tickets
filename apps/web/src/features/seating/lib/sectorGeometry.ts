@@ -7,7 +7,7 @@
  *   b ∈ [0, 1] → SOBE a arquibancada (da borda interna à externa)
  *
  * Com essa função, gerar a malha, o contorno e o centro é o mesmo código para as bandejas
- * curvas e para os palcos. Na Fase 3, cada cadeira também será um (a, b).
+ * curvas e para os palcos. Cada cadeira também é um (a, b): veja lib/seatLayout.ts.
  */
 import { BufferGeometry, Float32BufferAttribute } from 'three';
 import {
@@ -22,14 +22,12 @@ import {
   type UPathParams,
 } from './stadiumPath';
 
-/** Retângulo inclinado (palcos): da borda da frente (perto do campo) à de trás, entre zMin e zMax. */
+/** Retângulo inclinado (palcos): da borda da frente (perto do campo) à de trás. */
 export interface InclinedRect {
   frontX: number;
   frontY: number;
   backX: number;
   backY: number;
-  zMin: number;
-  zMax: number;
 }
 
 /** Forma de um setor. */
@@ -165,17 +163,6 @@ export function sectorFrame(shape: SectorShape, model: StandsModel): SectorFrame
   // A normal do caminho aponta para fora do campo; para o campo é o contrário.
   const p = samplePath((shape.t0 + shape.t1) / 2, model.path);
   return { center, toField: [-p.nx, -p.nz], size };
-}
-
-/** Capacidade estimada: (filas que cabem na profundidade) × (cadeiras que cabem no comprimento). */
-export function estimateCapacity(
-  shape: SectorShape,
-  model: StandsModel,
-  { seatWidth, rowDepth }: { seatWidth: number; rowDepth: number },
-): number {
-  const rows = Math.floor(sectorDepth(shape, model) / rowDepth);
-  const seatsPerRow = Math.floor(sectorLength(shape, model) / seatWidth);
-  return rows * seatsPerRow;
 }
 
 function lerp(a: number, b: number, k: number): number {

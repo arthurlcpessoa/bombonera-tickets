@@ -4,10 +4,13 @@
  * As bandejas curvas são divididas em 8 blocos iguais ao longo do U (numerados de 1, na ponta
  * −Z, até 8, na ponta +Z), com um corredor entre blocos vizinhos. A divisão é simétrica:
  * o meio da lateral (t = 0,5) é sempre a fronteira entre os blocos 4 e 5.
+ *
+ * Capacidade e lugares livres NÃO são estimados: vêm da contagem das cadeiras geradas
+ * (lib/seatLayout.ts). Assim o tooltip, o painel e o 3D mostram sempre o mesmo número.
  */
-import { PALCOS_PLATEA, SECTOR_LAYOUT } from '@/config/stadium';
-import { createRandom } from '@/features/seating/lib/random';
-import { estimateCapacity, type SectorShape } from '@/features/seating/lib/sectorGeometry';
+import { PALCOS_BLOCKS_Z, SECTOR_LAYOUT } from '@/config/stadium';
+import { countSeats, getSectorSeats } from '@/features/seating/lib/seatLayout';
+import type { SectorShape } from '@/features/seating/lib/sectorGeometry';
 import { pathLength, tierOffset, type CurvedTier } from '@/features/seating/lib/stadiumPath';
 import { DEFAULT_STANDS_MODEL } from './standsModel';
 
@@ -33,9 +36,9 @@ export interface Sector {
   tier: Tier;
   categoryId: PriceCategoryId;
   shape: SectorShape;
-  /** Capacidade estimada (lugares). */
+  /** Capacidade = número de cadeiras geradas para o setor. */
   capacity: number;
-  /** Lugares livres (dado simulado). */
+  /** Cadeiras livres (status simulado, veja lib/seatLayout.ts). */
   available: number;
 }
 
@@ -71,12 +74,9 @@ const CURVED_TIERS: { tier: CurvedTier; short: string; categoryId: PriceCategory
 ];
 
 const BLOCKS_PER_TIER = 8;
-const PALCOS_BLOCKS = 3;
 /** Trecho do U usado pelos setores (as pontas encostam no prédio dos palcos). */
 const T_START = 0.008;
 const T_END = 0.992;
-/** Semente fixa da disponibilidade simulada (1905: ano de fundação do Boca). */
-const AVAILABILITY_SEED = 1905;
 
 type SectorDraft = Omit<Sector, 'capacity' | 'available'>;
 
@@ -102,33 +102,25 @@ function curvedSectors(): SectorDraft[] {
   });
 }
 
+/** Palcos: um setor por bloco entre os corredores reais do modelo (config/stadium.ts). */
 function palcosSectors(): SectorDraft[] {
-  const { zMin, zMax } = PALCOS_PLATEA;
-  const step = (zMax - zMin) / PALCOS_BLOCKS;
-  const gap = SECTOR_LAYOUT.aisleWidth / 2;
-  return Array.from({ length: PALCOS_BLOCKS }, (_, i): SectorDraft => ({
+  return PALCOS_BLOCKS_Z.map(([zFrom, zTo], i): SectorDraft => ({
     id: `palcos-${i + 1}`,
     name: `Palcos ${i + 1}`,
     tier: 'palcos',
     categoryId: 'palcos',
-    shape: {
-      kind: 'straight',
-      z0: zMin + i * step + (i > 0 ? gap : 0),
-      z1: zMin + (i + 1) * step - (i < PALCOS_BLOCKS - 1 ? gap : 0),
-    },
+    // a vai de z0 a z1. Aqui z0 é a ponta +Z: assim `a` crescente vai para a DIREITA de quem
+    // está sentado olhando o campo (para −X), como nas bandejas curvas. A cadeira 1 fica à esquerda.
+    shape: { kind: 'straight', z0: Math.max(zFrom, zTo), z1: Math.min(zFrom, zTo) },
   }));
 }
 
-/** Monta a lista final: calcula capacidade e sorteia (com semente) os lugares livres. */
+/** Monta a lista final: capacidade e lugares livres vêm da contagem real das cadeiras. */
 function buildSectors(): Sector[] {
-  const random = createRandom(AVAILABILITY_SEED);
-  return [...curvedSectors(), ...palcosSectors()].map((draft) => {
-    const capacity = estimateCapacity(draft.shape, DEFAULT_STANDS_MODEL, SECTOR_LAYOUT);
-    // ~10% dos setores quase esgotados, o resto entre 15% e 75% livre.
-    const roll = random();
-    const freeShare = roll < 0.1 ? random() * 0.06 : 0.15 + random() * 0.6;
-    return { ...draft, capacity, available: Math.round(capacity * freeShare) };
-  });
+  return [...curvedSectors(), ...palcosSectors()].map((draft) => ({
+    ...draft,
+    ...countSeats(getSectorSeats(draft, DEFAULT_STANDS_MODEL)),
+  }));
 }
 
 export const SECTORS: readonly Sector[] = buildSectors();

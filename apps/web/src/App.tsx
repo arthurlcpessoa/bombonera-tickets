@@ -4,8 +4,9 @@ import { Header } from '@/components/ui/Header';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { NavigationHint } from '@/components/ui/NavigationHint';
 import { PriceLegend } from '@/components/ui/PriceLegend';
-import { SectorPanel } from '@/components/ui/SectorPanel';
+import { SeatTooltip } from '@/components/ui/SeatTooltip';
 import { SectorTooltip } from '@/components/ui/SectorTooltip';
+import { SelectionDock } from '@/components/ui/SelectionDock';
 import { ViewSwitcher } from '@/components/ui/ViewSwitcher';
 import { StadiumCanvas } from '@/features/stadium/components/StadiumCanvas';
 
@@ -30,8 +31,9 @@ export function App() {
       <ViewSwitcher />
       <NavigationHint />
       <Credits />
-      <SectorPanel />
+      <SelectionDock />
       <SectorTooltip />
+      <SeatTooltip />
       <LoadingScreen />
 
       {isDebug && (

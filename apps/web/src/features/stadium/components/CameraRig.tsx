@@ -129,5 +129,5 @@ function panelFocalOffset(cc: Controls, distance: number): [x: number, y: number
   // No camera-controls, x > 0 move a câmera para a direita (a cena "vai" para a esquerda)
   // e y > 0 move a câmera para baixo (a cena "sobe" na tela).
   if (w >= desktopMinWidth) return [(sideWidth / 2 / w) * visibleWidth, 0];
-  return [0, (Math.min(sheetHeight, h / 2) / 2 / h) * visibleHeight];
+  return [0, (Math.min(sheetHeight, h * 0.65) / 2 / h) * visibleHeight];
 }

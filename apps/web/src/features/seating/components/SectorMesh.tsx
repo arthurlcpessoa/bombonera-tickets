@@ -2,6 +2,7 @@ import { Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { memo, useEffect, useMemo } from 'react';
 import { DoubleSide } from 'three';
+import { COLORS } from '@/config/colors';
 import { SECTOR_LAYOUT } from '@/config/stadium';
 import type { Sector } from '@/features/seating/data/sectors';
 import {
@@ -10,6 +11,7 @@ import {
   type StandsModel,
 } from '@/features/seating/lib/sectorGeometry';
 import { useSelectionStore } from '@/store/useSelectionStore';
+import { isDragGesture, supportsHover } from './pointerRules';
 
 /** Estado visual de um setor. "dimmed" = outro setor está selecionado. */
 export type SectorVisualState = 'idle' | 'hovered' | 'selected' | 'dimmed';
@@ -19,15 +21,12 @@ const OPACITY: Record<SectorVisualState, number> = {
   dimmed: 0.2,
   idle: 0.55,
   hovered: 0.75,
-  selected: 0.8,
+  // Escolhido: a superfície quase some para as cadeiras aparecerem; fica o contorno dourado.
+  selected: 0.06,
 };
 
-/** Dourado do Boca (o mesmo --color-boca-gold do CSS), no contorno do setor selecionado. */
-const SELECTED_OUTLINE_COLOR = '#f2b51c';
 /** O contorno fica um pouco acima da superfície colorida. */
 const OUTLINE_EXTRA_LIFT = 0.15;
-/** Se o ponteiro andou mais que isso (px) entre apertar e soltar, foi arrasto, não clique. */
-const CLICK_MAX_DRAG_PX = 6;
 
 interface SectorMeshProps {
   sector: Sector;
@@ -52,7 +51,7 @@ export const SectorMesh = memo(function SectorMesh({
   const geometry = useMemo(
     () =>
       buildSectorGeometry(shape, model, {
-        lift: SECTOR_LAYOUT.lift,
+        lift: SECTOR_LAYOUT.lift[shape.kind],
         maxSegment: SECTOR_LAYOUT.segmentLength,
       }),
     [shape, model],
@@ -64,7 +63,7 @@ export const SectorMesh = memo(function SectorMesh({
     () =>
       state === 'selected'
         ? sectorOutline(shape, model, {
-            lift: SECTOR_LAYOUT.lift + OUTLINE_EXTRA_LIFT,
+            lift: SECTOR_LAYOUT.lift[shape.kind] + OUTLINE_EXTRA_LIFT,
             maxSegment: SECTOR_LAYOUT.segmentLength,
           })
         : null,
@@ -73,7 +72,7 @@ export const SectorMesh = memo(function SectorMesh({
 
   const handleOver = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation(); // só o setor mais próximo da câmera reage
-    if (e.pointerType === 'touch') return; // no toque não existe "passar o mouse"
+    if (!supportsHover(e)) return;
     useSelectionStore.getState().setHovered(id);
   };
 
@@ -84,7 +83,7 @@ export const SectorMesh = memo(function SectorMesh({
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    if (e.delta > CLICK_MAX_DRAG_PX) return; // foi arrasto da câmera
+    if (isDragGesture(e)) return; // foi arrasto da câmera
     useSelectionStore.getState().selectSector(id);
   };
 
@@ -93,9 +92,10 @@ export const SectorMesh = memo(function SectorMesh({
       {showSurface && (
         <mesh
           geometry={geometry}
-          onPointerOver={handleOver}
-          onPointerOut={handleOut}
-          onClick={handleClick}
+          // O setor escolhido não reage ao ponteiro: quem responde agora são as cadeiras dele.
+          {...(state === 'selected'
+            ? {}
+            : { onPointerOver: handleOver, onPointerOut: handleOut, onClick: handleClick })}
           renderOrder={1}
         >
           <meshBasicMaterial
@@ -118,7 +118,7 @@ export const SectorMesh = memo(function SectorMesh({
       {outline && (
         <Line
           points={outline}
-          color={SELECTED_OUTLINE_COLOR}
+          color={COLORS.gold}
           lineWidth={3}
           // Desenhado por cima de tudo: o contorno do escolhido aparece mesmo atrás de algo.
           depthTest={false}

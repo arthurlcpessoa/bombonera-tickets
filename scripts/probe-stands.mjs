@@ -182,8 +182,20 @@ function measureOffset(tier, t, u) {
   return null;
 }
 
-/** Preenche buracos (null) com o vizinho válido mais próximo e suaviza com mediana de 5. */
+/**
+ * Preenche buracos (null) com o vizinho válido mais próximo, tira "picos" com uma mediana de 5
+ * e alisa os degraus que sobram com uma média de 3 vizinhos. Sem essa última etapa, uma quina
+ * do modelo vira um "zigue-zague" na fila de cadeiras (Fase 3).
+ */
 function cleanSeries(values) {
+  const median = medianSeries(values);
+  return median.map((_, i) => {
+    const win = median.slice(Math.max(0, i - 1), i + 2);
+    return win.reduce((sum, v) => sum + v, 0) / win.length;
+  });
+}
+
+function medianSeries(values) {
   const filled = values.map((v, i) => {
     if (v !== null) return v;
     for (let k = 1; k < values.length; k++) {

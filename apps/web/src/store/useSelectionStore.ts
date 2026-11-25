@@ -29,7 +29,12 @@ export const useSelectionStore = create<SelectionState>((set) => ({
   selectSector: (id) => {
     // A câmera vai sair do preset atual: nenhum botão de visão fica marcado.
     useViewStore.getState().clearPreset();
-    set((s) => ({ selectedSectorId: id, selectRequestId: s.selectRequestId + 1 }));
+    // O hover do setor é limpo: o setor escolhido deixa de reagir ao ponteiro (as cadeiras reagem).
+    set((s) => ({
+      selectedSectorId: id,
+      hoveredSectorId: null,
+      selectRequestId: s.selectRequestId + 1,
+    }));
   },
   clearSelection: () => set({ selectedSectorId: null }),
   setShowSectors: (show) => set({ showSectors: show, hoveredSectorId: null }),

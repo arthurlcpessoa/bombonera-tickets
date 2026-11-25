@@ -6,9 +6,9 @@ A tela é montada em **duas camadas**:
 
 ```
 ┌───────────────────────────────────────────┐
-│  Interface HTML (React + Tailwind)        │  ← header, legenda, tooltip, painel do setor
+│  Interface HTML (React + Tailwind)        │  ← header, legenda, tooltips, painel, resumo
 │  ┌─────────────────────────────────────┐  │
-│  │  <Canvas> WebGL (React Three Fiber) │  │  ← o estádio 3D + camada de setores
+│  │  <Canvas> WebGL (React Three Fiber) │  │  ← o estádio 3D + setores + cadeiras
 │  └─────────────────────────────────────┘  │
 └───────────────────────────────────────────┘
 ```
@@ -16,11 +16,12 @@ A tela é montada em **duas camadas**:
 As duas camadas não se chamam diretamente. Elas conversam pelos **stores do Zustand** (`src/store/`),
 como dois setores de uma empresa que se comunicam por um quadro de avisos:
 
-| Store               | O que guarda                                        | Quem escreve → quem lê                     |
-| ------------------- | --------------------------------------------------- | ------------------------------------------ |
-| `useViewStore`      | visão pronta ativa (preset)                         | botões de visão → `CameraRig`              |
-| `useSelectionStore` | setor sob o mouse, setor escolhido, mostrar/ocultar | setores 3D ↔ tooltip, painel, legenda      |
-| `useStandsStore`    | modelo das arquibancadas (forma + correção)         | painel `?debug` → setores 3D e `CameraRig` |
+| Store               | O que guarda                                           | Quem escreve → quem lê                     |
+| ------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| `useViewStore`      | visão pronta ativa (preset)                            | botões de visão → `CameraRig`              |
+| `useSelectionStore` | setor sob o mouse, setor escolhido, mostrar/ocultar    | setores 3D ↔ tooltip, painel, legenda      |
+| `useStandsStore`    | modelo das arquibancadas (forma + correção)            | painel `?debug` → setores 3D e `CameraRig` |
+| `useSeatStore`      | cadeira em hover, cadeiras escolhidas, aviso de limite | cadeiras 3D ↔ mini-mapa, tooltip, resumo   |
 
 Exemplo: clicar num setor chama `selectSector('upper-3')`. O painel HTML lê o setor escolhido e abre;
 o `CameraRig`, que "assina" o store com `subscribe()`, calcula o enquadramento e voa até ele.
@@ -38,14 +39,15 @@ Unidades em **metros**, na escala real do estádio.
 
 ## Componentes 3D
 
-| Componente (`src/features/...`) | Responsabilidade                                                         |
-| ------------------------------- | ------------------------------------------------------------------------ |
-| `stadium/StadiumCanvas`         | Cria o `<Canvas>` (renderer, cena, câmera) e organiza os filhos          |
-| `stadium/StadiumModel`          | Carrega o `.glb` com `useGLTF` (com cache e pré-carregamento)            |
-| `stadium/Environment`           | Céu, luzes e chão ao redor                                               |
-| `stadium/CameraRig`             | `CameraControls`: girar, zoom, limites, presets e voo até o setor        |
-| `seating/SectorOverlay`         | Desenha todos os setores + o bloqueador invisível sobre os palcos        |
-| `seating/SectorMesh`            | Um setor: superfície translúcida, eventos de ponteiro e contorno dourado |
+| Componente (`src/features/...`) | Responsabilidade                                                            |
+| ------------------------------- | --------------------------------------------------------------------------- |
+| `stadium/StadiumCanvas`         | Cria o `<Canvas>` (renderer, cena, câmera) e organiza os filhos             |
+| `stadium/StadiumModel`          | Carrega o `.glb` e segura eventos de ponteiro (bloqueio por estrutura, BVH) |
+| `stadium/Environment`           | Céu, luzes e chão ao redor                                                  |
+| `stadium/CameraRig`             | `CameraControls`: girar, zoom, limites, presets e voo até o setor           |
+| `seating/SectorOverlay`         | Desenha todos os setores e as cadeiras do setor escolhido                   |
+| `seating/SectorMesh`            | Um setor: superfície translúcida, eventos de ponteiro e contorno dourado    |
+| `seating/SeatInstances`         | As cadeiras do setor escolhido, numa única `InstancedMesh`                  |
 
 ## Como os setores funcionam (Fase 2)
 
@@ -97,18 +99,18 @@ Todo setor vira uma função **(a, b) → ponto 3D**, como um lençol esticado c
 - a **malha** (`buildSectorGeometry`): uma grade de quadradinhos, cada um com 2 triângulos;
 - o **contorno** do selecionado (`sectorOutline`);
 - o **enquadramento** da câmera (`sectorFrame`): centro, direção do campo e tamanho;
-- a **capacidade estimada** (`estimateCapacity`): filas × cadeiras por fila.
+- a **posição de cada cadeira** (Fase 3, veja abaixo).
 
 Há dois tipos de forma: `curved` (trecho [t0, t1] de uma bandeja do U) e `straight` (fatia da
-platea dos palcos, um retângulo inclinado). Na Fase 3, cada cadeira também será um (a, b).
+platea dos palcos, um retângulo inclinado).
 
 ### 4. Dados (`seating/data/sectors.ts`)
 
-- 3 bandejas × 8 blocos ao longo do U + 3 blocos de palcos = **27 setores**, com corredores de 1,6 m.
+- 3 bandejas × 8 blocos ao longo do U (corredores de 1,6 m) + 5 blocos de palcos = **29 setores**.
+  Os palcos seguem os corredores (escadas) **reais** do modelo, medidos na Fase 3 (`PALCOS_BLOCKS_Z`).
 - Faixas de preço com cor própria (`PRICE_CATEGORIES`). As cores evitam azul e amarelo, as cores
   das cadeiras do modelo, para não "sumirem" quando misturadas a elas.
-- Disponibilidade simulada com um gerador de números **com semente** (`lib/random.ts`): parece
-  aleatória, mas é sempre a mesma a cada recarga.
+- Capacidade e lugares livres = **contagem das cadeiras geradas** (veja "Como as cadeiras funcionam").
 
 ### 5. Interação
 
@@ -116,12 +118,17 @@ platea dos palcos, um retângulo inclinado). Na Fase 3, cada cadeira também ser
   setor mais próximo reagir. Ignorado no toque (não existe "passar o mouse" no celular).
 - **Clique × arrasto:** o evento de clique traz `e.delta` (px andados entre apertar e soltar). Acima de
   6 px foi arrasto da câmera, e o clique é ignorado.
-- **Bloqueador:** o R3F só "enxerga" objetos com eventos, então daria para clicar na platea através
-  do telhado dos palcos. Uma caixa invisível sobre o prédio dos palcos segura esses eventos.
-- **Voo da câmera:** alvo no centro do setor; câmera entre o setor e o campo, mais alta (32° nas
-  bandejas, 7° nos palcos, para olhar por baixo da laje). O _focal offset_ desloca a imagem para o
-  setor não ficar atrás do painel.
-- **Painel:** lateral no desktop, "gaveta" no celular, `role="dialog"`, fecha com Esc e volta à visão geral.
+- **Bloqueio por estrutura:** o R3F só "enxerga" objetos com eventos. Para não dar para clicar
+  através de telhados e muretas, o próprio estádio recebe os eventos e os segura (`stopPropagation`).
+  Com 721 mil triângulos, isso só é viável com um **BVH** (`<Bvh>` do drei, estratégia CENTER, que
+  monta em ~0,4 s contra ~2 s do padrão SAH). Nos palcos a superfície do setor fica 0,65 m acima do
+  piso, por cima das cadeiras modeladas, senão elas "tampariam" o setor.
+- **Voo da câmera:** alvo no centro do setor; câmera entre o setor e o campo, mais alta (34° nas
+  bandejas, 12° nos palcos, para olhar por baixo da laje). Desde a Fase 3 ela chega mais perto,
+  para as cadeiras ficarem legíveis. O _focal offset_ desloca a imagem para o setor não ficar atrás
+  do painel.
+- **Painel:** lateral no desktop, "gaveta" no celular (acima dos botões de visão), `role="dialog"`,
+  fecha com Esc e volta à visão geral.
 
 ### 6. Modo `?debug`
 
@@ -129,7 +136,82 @@ Abra `http://localhost:5173/?debug`. O painel **leva** permite ajustar ao vivo o
 e os palcos, ligar/desligar a correção e copiar os valores em JSON. Ele é carregado com `import()`
 dinâmico (`React.lazy`), então fica num arquivo separado que o site normal nunca baixa.
 
+## Como as cadeiras funcionam (Fase 3)
+
+Ao escolher um setor, a superfície colorida dele quase some (fica o contorno dourado) e aparecem as
+cadeiras: cada uma com fila e número, colorida pelo status.
+
+### 1. Geração (`seating/lib/seatLayout.ts`, TypeScript puro)
+
+Nada de matemática nova: **toda cadeira é um ponto (a, b) da mesma superfície do setor** da Fase 2.
+
+- **Filas:** `floor(profundidade / 0,8 m)`; a fila r fica em b = (r − 0,5) / filas. Fila 1 = a da frente.
+- **Cadeiras por fila:** uma "fita métrica" anda pela superfície em passos de 20 cm e mede o
+  comprimento real da fila. Nas curvas as filas de trás são mais compridas, então cabem mais
+  cadeiras (ex.: Superior 3 vai de 123 a 146 por fila). As cadeiras ficam centralizadas, a cada
+  0,5 m, e a fita converte "metros andados" de volta para `a`.
+- **Orientação (yaw):** por **diferenças finitas**: compara um ponto um pouco acima e outro um pouco
+  abaixo na arquibancada. Essa diferença aponta "morro acima", e a cadeira olha para o lado contrário
+  (o campo). Vale igual para curvas e palcos.
+- **Numeração:** cresce com `a`, que vai para a **direita de quem está sentado**. Ou seja, a cadeira 1
+  fica à esquerda do torcedor (nos palcos o sentido de `a` foi invertido para manter essa regra).
+- **Olhos (`eye`):** 1,15 m acima do assento, 8 cm para trás: o ponto de vista da Fase 4.
+- **Status simulado:** semente derivada do id do setor (hash FNV-1a). As vendas saem em **grupos de 2 a
+  6** (famílias e amigos) e as filas da frente vendem mais. Nada de `Math.random()`.
+- **Cache:** as listas ficam guardadas por setor num `WeakMap` por modelo; se o modelo mudar
+  (`?debug`), elas são geradas de novo. Gerar o estádio inteiro leva ~30 ms.
+- **Fonte única:** `sectors.ts` conta as cadeiras para preencher capacidade e lugares livres.
+
+Total: **29.089 cadeiras** (Inferior 9.433 · Média 8.395 · Superior 10.085 · Palcos 1.176). A Bombonera
+real tem ~54 mil lugares, mas muitos são de pé e os camarotes não fazem parte desta camada.
+O maior setor é a **Superior 3, com 1.881 cadeiras**.
+
+**Palcos:** lá o modelo tem cadeiras 3D de verdade. O script mediu as 6 fileiras, o passo (0,482 m) e
+os corredores, e as cadeiras geradas caem em cima das reais. Em vez de uma segunda cadeira por dentro
+da primeira, desenhamos uma **"capa"** um pouco maior: a cadeira real aparece "pintada" com o status.
+
+### 2. Desenho (`seating/components/SeatInstances.tsx`)
+
+- **InstancedMesh:** um único "molde" de cadeira (assento + encosto, juntados com `mergeGeometries`)
+  desenhado N vezes numa só chamada à placa de vídeo. Cada cópia tem sua matriz (posição + rotação)
+  e sua cor. 1.881 cadeiras custam praticamente o mesmo que uma.
+- **Cores:** livre = cor da faixa de preço; vendida = cinza escuro; hover = mais clara; escolhida = dourado.
+- **Sem re-render no hover:** o componente "assina" o `useSeatStore` com `subscribe()` e, quando o
+  hover ou a seleção mudam, repinta **só as cadeiras afetadas** com `setColorAt` +
+  `instanceColor.needsUpdate`. O tooltip da cadeira e o destaque no mini-mapa também são atualizados
+  direto no DOM. Medido: 80 passagens de mouse por 75 cadeiras = **0 commits do React**.
+- **Memória:** trocar de setor desmonta o componente, que chama `dispose()` na geometria e no material.
+
+### 3. Interação
+
+- `e.instanceId` diz qual cadeira o raio atingiu. A regra clique × arrasto é compartilhada com os
+  setores (`seating/components/pointerRules.ts`).
+- Cadeira vendida mostra "Vendida", não tem cursor de mão e não é clicável.
+- Até **6 cadeiras por compra** (`ORDER_RULES.maxSeats`). Passar disso mostra um aviso amigável.
+- A seleção é do **usuário**, não do setor (`useSeatStore`): pode misturar setores, sobrevive a fechar
+  o painel e só "Limpar seleção" apaga. (Sem `localStorage` por enquanto: vem com o carrinho, na Fase 5.)
+- Um único `useSceneCursor` decide a mãozinha olhando setores e cadeiras.
+
+### 4. Interface
+
+- **Mini-mapa** (`components/ui/SeatMap.tsx`): grade de `<button>`s desenhada como vista do campo
+  (fila 1 embaixo, cadeira 1 à direita), sincronizada com o 3D nos dois sentidos. É a alternativa
+  **acessível por teclado**: um Tab entra no mapa ("tabindex itinerante"), as setas andam (↑/↓ vão
+  para a cadeira mais alinhada da fila vizinha), Enter/Espaço escolhem, e cada botão se anuncia
+  ("Fila 12, cadeira 7, livre").
+- **Resumo** (`SeatSelectionSummary`): cadeiras por setor, remover, total em ARS, "Ver visão do
+  assento" (Fase 4) e "Continuar" (em breve). No celular é uma barra compacta que expande.
+- **`SelectionDock`** posiciona painel + resumo: coluna à direita no desktop, empilhados acima dos
+  botões de visão no celular.
+
+### 5. Testes automatizados (`npm test`)
+
+Vitest testa as funções puras (`stadiumPath.test.ts`, `seatLayout.test.ts`): ids únicos, total
+plausível, cadeiras dentro do setor e na altura do perfil, todas viradas para o campo, espaçamento,
+numeração, determinismo, filas de trás ≥ filas da frente nas curvas e capacidade = contagem.
+Funções puras (só dependem da entrada, sem tela nem estado escondido) são fáceis de testar:
+basta chamar e comparar.
+
 ## Próximas fases
 
-- **Fase 3:** cadeiras com `InstancedMesh`, posicionadas por (a, b) sobre a mesma superfície do setor.
-- **Fase 4:** visão do assento: a câmera vai à coordenada da cadeira, a ~1,2 m de altura, olhando o campo.
+- **Fase 4:** visão do assento: a câmera vai ao `eye` da cadeira, olhando o campo.

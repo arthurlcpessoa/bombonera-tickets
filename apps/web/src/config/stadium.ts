@@ -37,45 +37,89 @@ export const TIER_PROFILES: Record<CurvedTier, TierProfile> = {
 };
 
 /**
- * Platea dos palcos (lado reto +X): degraus baixos sob a laje dos camarotes.
- * Descrita como um retângulo inclinado: borda da frente (perto do campo) e borda de trás.
+ * Platea dos palcos (lado reto +X): 6 degraus baixos sob a laje dos camarotes, com cadeiras
+ * modeladas no .glb. Descrita como um retângulo inclinado (borda da frente → borda de trás).
+ *
+ * Medida com `npm run stands:probe`: as fileiras de cadeiras ficam em x ≈ 37,5 / 38,4 / 39,15 /
+ * 40,0 / 40,85 / 41,65, com o piso em y ≈ 4,1 … 7,4. A rampa abaixo passa pelo piso de cada
+ * degrau e as 6 filas (0,8 m cada) caem exatamente sobre as fileiras reais.
  */
 export const PALCOS_PLATEA: InclinedRect = {
-  frontX: 36.8,
-  frontY: 4,
-  backX: 41.6,
-  backY: 7.4,
-  zMin: -54,
-  zMax: 54,
+  frontX: 37.085,
+  frontY: 3.758,
+  backX: 42.065,
+  backY: 7.749,
 };
 
 /**
- * Caixa invisível sobre o prédio dos palcos (laje, camarotes e telhado). Ela "segura" o ponteiro
- * para que não dê para clicar na platea através do telhado. [mínimo xyz, máximo xyz]
+ * Blocos da platea [z0, z1], entre os corredores (escadas) reais do modelo. Cada bloco vai da
+ * borda da primeira à borda da última cadeira modelada (centro ± meio passo), para as cadeiras
+ * geradas caírem em cima das reais. Pontas com poucas cadeiras (|z| > 51) ficam de fora.
  */
-export const PALCOS_OCCLUDER = { min: [36.5, 8.8, -56], max: [44.6, 23, 56] } as const;
+export const PALCOS_BLOCKS_Z: readonly (readonly [number, number])[] = [
+  [-51.05, -32.22],
+  [-30.5, -11.67],
+  [-9.95, 9.23],
+  [11.15, 29.98],
+  [31.65, 50.48],
+];
+
+const SECTOR_LAYOUT_SEAT_WIDTH = 0.5;
 
 /** Medidas usadas pelos setores. */
 export const SECTOR_LAYOUT = {
-  /** Quanto a superfície colorida fica acima da arquibancada, para não "piscar" com ela. */
-  lift: 0.15,
+  /**
+   * Quanto a superfície colorida fica acima da arquibancada, para não "piscar" com ela.
+   * Nos palcos ela passa por cima das cadeiras modeladas (assento a ~0,5 m do piso): se ficasse
+   * por baixo, as cadeiras do próprio estádio "tampariam" o setor e ele não receberia o clique.
+   */
+  lift: { curved: 0.15, straight: 0.65 },
   /** Largura do corredor entre dois blocos vizinhos. */
   aisleWidth: 1.6,
-  /** Largura de uma cadeira e profundidade de uma fila: usadas para estimar a capacidade. */
-  seatWidth: 0.5,
+  /** Largura de uma cadeira e profundidade de uma fila: definem quantas cadeiras cabem. */
+  seatWidth: SECTOR_LAYOUT_SEAT_WIDTH,
   rowDepth: 0.8,
   /** Tamanho máximo de cada "fatia" da malha ao longo do U (menor = curva mais lisa). */
   segmentLength: 1.5,
 } as const;
 
-/** Enquadramento da câmera ao voar até um setor. */
+/** Medidas das cadeiras (Fase 3). A profundidade da fila vem de SECTOR_LAYOUT.rowDepth. */
+export const SEAT_LAYOUT = {
+  /**
+   * Distância entre os centros de duas cadeiras vizinhas (m). Nas bandejas curvas, a largura
+   * padrão; nos palcos, o passo MEDIDO das cadeiras modeladas, para coincidir com elas.
+   */
+  pitch: { curved: SECTOR_LAYOUT_SEAT_WIDTH, straight: 0.482 },
+  /** Espaço livre em cada ponta da fila (m). Nos palcos o bloco já começa na borda da cadeira. */
+  rowEndMargin: { curved: 0.35, straight: 0 },
+
+  /** Altura dos olhos de quem está sentado, acima do assento (m). Usada na Fase 4. */
+  eyeHeight: 1.15,
+  /** Os olhos ficam um pouco atrás do centro do assento (m), perto do encosto. */
+  eyeBack: 0.08,
+  /** Passo da "fita métrica" que mede cada fila (m). Menor = cadeiras mais bem espaçadas. */
+  rowSampleSpacing: 0.2,
+  /** Passo das "diferenças finitas" usadas para achar a inclinação da arquibancada. */
+  slopeStep: 0.01,
+} as const;
+
+/** Regras da compra. */
+export const ORDER_RULES = {
+  /** Máximo de cadeiras por compra. */
+  maxSeats: 6,
+} as const;
+
+/**
+ * Enquadramento da câmera ao voar até um setor. Desde a Fase 3 o setor escolhido mostra as
+ * cadeiras, então a câmera chega mais perto (cada cadeira tem só 0,5 m).
+ */
 export const SECTOR_CAMERA = {
   /** Ângulo acima do horizonte (graus). Os palcos ficam sob uma laje: é preciso olhar mais de lado. */
-  elevationDeg: { curved: 32, straight: 7 },
+  elevationDeg: { curved: 34, straight: 12 },
   /** Distância = maior dimensão do setor × fator (com mínimo e máximo, em metros). */
-  distanceFactor: 1.25,
-  minDistance: 35,
-  maxDistance: 110,
+  distanceFactor: 0.8,
+  minDistance: 26,
+  maxDistance: 65,
   /** Em telas verticais (celular em pé) o campo de visão horizontal é estreito: afasta mais. */
   portraitZoomOut: 1.5,
 } as const;
@@ -89,8 +133,8 @@ export const SECTOR_PANEL_LAYOUT = {
   desktopMinWidth: 768,
   /** Largura do painel lateral, incluindo a margem (px). */
   sideWidth: 384,
-  /** Altura aproximada da gaveta no celular (px). */
-  sheetHeight: 300,
+  /** Altura aproximada da gaveta no celular (px), com o mini-mapa de cadeiras. */
+  sheetHeight: 430,
 } as const;
 
 export const PITCH = {

@@ -51,8 +51,6 @@ export default function DebugPanel() {
       backX: { value: defaults.palcos.backX, min: 30, max: 50, step: 0.1 },
       backY: { value: defaults.palcos.backY, min: 0, max: 15, step: 0.1 },
     }),
-    zMin: { value: defaults.palcos.zMin, min: -70, max: 0, step: 0.5 },
-    zMax: { value: defaults.palcos.zMax, min: 0, max: 70, step: 0.5 },
   });
 
   useControls({
