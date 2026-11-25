@@ -22,7 +22,7 @@ export function SelectionDock() {
     <div
       // A largura do painel vem do config (a câmera usa o mesmo número) via variável CSS.
       style={{ '--panel-w': `${PANEL_WIDTH}px` } as CSSProperties}
-      className="pointer-events-none absolute inset-x-0 bottom-[7.25rem] z-20 flex flex-col-reverse gap-2 md:inset-x-auto md:top-4 md:right-4 md:bottom-4 md:w-(--panel-w) md:flex-col md:justify-start md:gap-3"
+      className="hide-in-seat-view pointer-events-none absolute inset-x-0 bottom-[7.25rem] z-20 flex flex-col-reverse gap-2 md:inset-x-auto md:top-4 md:right-4 md:bottom-4 md:w-(--panel-w) md:flex-col md:justify-start md:gap-3"
     >
       <SectorPanel />
       <SeatSelectionSummary />

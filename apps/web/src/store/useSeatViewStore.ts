@@ -24,6 +24,10 @@ interface SeatViewState {
   /** Vai para a cadeira vizinha. Na ponta do setor, não faz nada. */
   moveSeatView: (direction: SeatDirection) => void;
 
+  /** Na visão do assento, reexibe os marcadores das cadeiras do setor (começa desligado). */
+  showSeatsForSale: boolean;
+  setShowSeatsForSale: (show: boolean) => void;
+
   /** Zoom atual do binóculo (1 = olho nu). Escrito pela câmera, lido pelo HUD. */
   zoom: number;
   /** Pedido de zoom vindo da interface (teclas +/−, botões): a câmera atende. */
@@ -57,6 +61,9 @@ export const useSeatViewStore = create<SeatViewState>((set, get) => ({
     const next = neighborSeat(getSectorSeats(found.sector, model), found.seat, direction);
     if (next) set((s) => ({ viewingSeatId: next.id, requestId: s.requestId + 1 }));
   },
+
+  showSeatsForSale: false,
+  setShowSeatsForSale: (show) => set({ showSeatsForSale: show }),
 
   zoom: 1,
   zoomRequest: { value: 1, id: 0 },

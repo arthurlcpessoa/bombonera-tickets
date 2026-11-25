@@ -9,7 +9,7 @@ export function ViewSwitcher() {
   return (
     <nav
       aria-label="Pontos de vista"
-      className="glass-card absolute inset-x-0 bottom-14 mx-auto flex w-fit max-w-[calc(100%-2rem)] gap-1 overflow-x-auto rounded-full p-1.5 sm:bottom-6"
+      className="glass-card hide-in-seat-view absolute inset-x-0 bottom-14 mx-auto flex w-fit max-w-[calc(100%-2rem)] gap-1 overflow-x-auto rounded-full p-1.5 sm:bottom-6"
     >
       {CAMERA_PRESETS.map((preset) => {
         const active = preset.id === activePreset;

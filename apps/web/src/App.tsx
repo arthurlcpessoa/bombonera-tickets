@@ -5,10 +5,12 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { NavigationHint } from '@/components/ui/NavigationHint';
 import { PriceLegend } from '@/components/ui/PriceLegend';
 import { SeatTooltip } from '@/components/ui/SeatTooltip';
+import { SeatViewHud } from '@/components/ui/SeatViewHud';
 import { SectorTooltip } from '@/components/ui/SectorTooltip';
 import { SelectionDock } from '@/components/ui/SelectionDock';
 import { ViewSwitcher } from '@/components/ui/ViewSwitcher';
 import { StadiumCanvas } from '@/features/stadium/components/StadiumCanvas';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 
 /**
  * Painel de calibração, só com ?debug na URL. lazy() + import() dinâmico: o código dele
@@ -22,8 +24,11 @@ const isDebug = new URLSearchParams(window.location.search).has('debug');
  * flutua por cima dele com position: absolute.
  */
 export function App() {
+  // Na visão do assento, a interface normal sai de cena (classe hide-in-seat-view, em index.css).
+  const viewingSeat = useSeatViewStore((s) => s.viewingSeatId !== null);
+
   return (
-    <main className="relative h-full w-full">
+    <main className="relative h-full w-full" data-seat-view={viewingSeat ? '' : undefined}>
       <StadiumCanvas />
 
       <Header />
@@ -32,6 +37,7 @@ export function App() {
       <NavigationHint />
       <Credits />
       <SelectionDock />
+      <SeatViewHud />
       <SectorTooltip />
       <SeatTooltip />
       <LoadingScreen />

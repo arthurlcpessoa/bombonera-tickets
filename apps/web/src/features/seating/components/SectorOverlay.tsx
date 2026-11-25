@@ -20,6 +20,7 @@ export function SectorOverlay() {
   const selectedId = useSelectionStore((s) => s.selectedSectorId);
   const showSectors = useSelectionStore((s) => s.showSectors);
   const viewingSeat = useSeatViewStore((s) => s.viewingSeatId !== null);
+  const showSeatsForSale = useSeatViewStore((s) => s.showSeatsForSale);
 
   // Cursor de "mãozinha" sobre setores e cadeiras livres.
   useSceneCursor();
@@ -31,7 +32,8 @@ export function SectorOverlay() {
   };
 
   // Visão do assento: a cena fica "limpa", como na vida real (sem setores nem marcadores).
-  if (viewingSeat) return null;
+  // A chave "Mostrar cadeiras à venda" do HUD reexibe só as cadeiras do setor atual.
+  if (viewingSeat) return showSeatsForSale ? <SeatInstances /> : null;
 
   return (
     <group name="sectors">

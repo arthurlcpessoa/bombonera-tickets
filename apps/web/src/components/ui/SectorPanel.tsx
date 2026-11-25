@@ -6,6 +6,7 @@ import {
   formatPrice,
   type AvailabilityLevel,
 } from '@/features/seating/lib/pricing';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useViewStore } from '@/store/useViewStore';
 import { AwayBadge } from './AwayBadge';
@@ -33,7 +34,7 @@ export function SectorPanel() {
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closePanel();
+      if (e.key === 'Escape' && !useSeatViewStore.getState().viewingSeatId) closePanel();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

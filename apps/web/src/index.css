@@ -7,6 +7,38 @@
   --color-boca-gold: #f2b51c;
   --font-sans:
     'Plus Jakarta Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Entrada do HUD da visão do assento: sobe e aparece. */
+  --animate-hud-in: hud-in 0.35s ease-out both;
+  @keyframes hud-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+}
+
+/*
+ * Interface que sai de cena na visão do assento (quando o <main> tem o atributo data-seat-view). "invisible" (visibility: hidden) também tira o
+ * elemento do Tab e dos leitores de tela; a transição de visibility espera o fade terminar.
+ */
+@utility hide-in-seat-view {
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s;
+  &:where([data-seat-view] *) {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Sem animações para quem pediu menos movimento no sistema. */
+@media (prefers-reduced-motion: reduce) {
+  .hide-in-seat-view,
+  .animate-hud-in {
+    transition: none;
+    animation: none;
+  }
 }
 
 /*
