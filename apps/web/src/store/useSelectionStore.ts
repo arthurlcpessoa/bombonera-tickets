@@ -1,0 +1,36 @@
+import { create } from 'zustand';
+import { useViewStore } from './useViewStore';
+
+/**
+ * Seleção de setores (Zustand). O canvas 3D escreve aqui (hover, clique) e a interface HTML
+ * lê (tooltip, painel), e vice-versa (fechar o painel, ligar/desligar os setores).
+ */
+interface SelectionState {
+  /** Setor sob o mouse (null = nenhum). */
+  hoveredSectorId: string | null;
+  /** Setor escolhido com clique: a câmera voa até ele e o painel abre. */
+  selectedSectorId: string | null;
+  /** Mostrar as superfícies coloridas dos setores. */
+  showSectors: boolean;
+  /** Incrementa a cada clique, para a câmera voar de novo mesmo se o setor já estava escolhido. */
+  selectRequestId: number;
+  setHovered: (id: string | null) => void;
+  selectSector: (id: string) => void;
+  clearSelection: () => void;
+  setShowSectors: (show: boolean) => void;
+}
+
+export const useSelectionStore = create<SelectionState>((set) => ({
+  hoveredSectorId: null,
+  selectedSectorId: null,
+  showSectors: true,
+  selectRequestId: 0,
+  setHovered: (id) => set({ hoveredSectorId: id }),
+  selectSector: (id) => {
+    // A câmera vai sair do preset atual: nenhum botão de visão fica marcado.
+    useViewStore.getState().clearPreset();
+    set((s) => ({ selectedSectorId: id, selectRequestId: s.selectRequestId + 1 }));
+  },
+  clearSelection: () => set({ selectedSectorId: null }),
+  setShowSectors: (show) => set({ showSectors: show, hoveredSectorId: null }),
+}));

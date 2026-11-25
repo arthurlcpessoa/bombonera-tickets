@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
+import { SectorOverlay } from '@/features/seating/components/SectorOverlay';
 import { getPreset, DEFAULT_PRESET } from '@/features/stadium/cameraPresets';
 import { CameraRig } from './CameraRig';
 import { Environment } from './Environment';
@@ -24,6 +25,8 @@ export function StadiumCanvas() {
       {/* Suspense: enquanto o .glb carrega, nada é desenhado (a tela de loading HTML aparece por cima). */}
       <Suspense fallback={null}>
         <StadiumModel />
+        {/* Setores dentro do mesmo Suspense: só aparecem junto com o estádio. */}
+        <SectorOverlay />
       </Suspense>
 
       <CameraRig />

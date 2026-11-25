@@ -47,3 +47,13 @@
 - Escala real em metros (campo de ~68 × 105 m).
 - Agrupado **por material**, não por setor: por isso setores e cadeiras são gerados por código.
 - Nas bandejas curvas, as cadeiras são uma superfície texturizada. Só o lado dos palcos tem cadeiras modeladas.
+
+## Medindo o modelo (`scripts/probe-stands.mjs`)
+
+Como as arquibancadas não vêm separadas no `.glb`, os setores são posicionados por código.
+O script `npm run stands:probe` lança raios verticais sobre o modelo e imprime a altura atingida
+e o material de cada ponto. Isso serviu para descobrir, por exemplo, que as cadeiras das bandejas
+inferior e superior usam os materiais `popu_29` (cabeceiras) e `material_47` (lateral), e a média usa
+`material_43`/`material_44`. Veja a seção "Como os setores funcionam" em [ARQUITETURA.md](ARQUITETURA.md).
+
+Se o `.glb` for regerado, rode `npm run stands:calibrate` para medir de novo a tabela de correção.

@@ -10,8 +10,8 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 | Fase | Descrição                                                     | Status       |
 | ---- | ------------------------------------------------------------- | ------------ |
 | 1    | Setup do projeto + estádio 3D navegável                       | ✅ Concluída |
-| 2    | Setores interativos (hover, preço, câmera voando até o setor) | ⏳ Próxima   |
-| 3    | Cadeiras geradas por código (InstancedMesh) e seleção         | —            |
+| 2    | Setores interativos (hover, preço, câmera voando até o setor) | ✅ Concluída |
+| 3    | Cadeiras geradas por código (InstancedMesh) e seleção         | ⏳ Próxima   |
 | 4    | Visão do assento em primeira pessoa                           | —            |
 | 5    | Back-end: API, banco, reserva temporária, checkout (sandbox)  | —            |
 | 6    | Acabamento: mobile, desempenho, deploy                        | —            |
@@ -21,36 +21,50 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 - **TypeScript** em todo o projeto
 - **React 19 + Vite**: interface e build
 - **Three.js + React Three Fiber + drei**: renderização 3D
-- **Zustand**: estado global (visão ativa, depois setor, cadeira e carrinho)
+- **Zustand**: estado global (visão ativa, setor escolhido; depois cadeira e carrinho)
 - **Tailwind CSS 4**: estilo da interface sobre o canvas
 - **glTF Transform + meshoptimizer + sharp**: pipeline de otimização do modelo 3D
+- **three-mesh-bvh**: raycasting rápido no script que mede as arquibancadas
+- **leva**: painel de calibração do modo `?debug` (carregado sob demanda)
 - **oxlint + Prettier**: qualidade e formatação de código
 
 ## Como rodar
 
-Pré-requisito: **Node.js 22+**.
+Pré-requisito: **Node.js 22.18+** (os scripts `stands:*` executam TypeScript direto no Node).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra <http://localhost:5173>.
+Abra <http://localhost:5173>. Para o painel de calibração dos setores, abra <http://localhost:5173/?debug>.
 
-| Script                   | O que faz                                                   |
-| ------------------------ | ----------------------------------------------------------- |
-| `npm run dev`            | Servidor de desenvolvimento com recarregamento automático   |
-| `npm run build`          | Checagem de tipos + build de produção em `apps/web/dist`    |
-| `npm run preview`        | Serve o build de produção localmente                        |
-| `npm run lint`           | Lint com oxlint                                             |
-| `npm run typecheck`      | Checagem de tipos do TypeScript                             |
-| `npm run format`         | Formata todo o código com Prettier                          |
-| `npm run model:optimize` | Regera `bombonera.glb` a partir do modelo bruto (veja docs) |
+| Script                     | O que faz                                                   |
+| -------------------------- | ----------------------------------------------------------- |
+| `npm run dev`              | Servidor de desenvolvimento com recarregamento automático   |
+| `npm run build`            | Checagem de tipos + build de produção em `apps/web/dist`    |
+| `npm run preview`          | Serve o build de produção localmente                        |
+| `npm run lint`             | Lint com oxlint                                             |
+| `npm run typecheck`        | Checagem de tipos do TypeScript                             |
+| `npm run format`           | Formata todo o código com Prettier                          |
+| `npm run model:optimize`   | Regera `bombonera.glb` a partir do modelo bruto (veja docs) |
+| `npm run stands:probe`     | Mede o modelo 3D (perfis das arquibancadas; veja docs)      |
+| `npm run stands:calibrate` | Regera a tabela de correção dos setores                     |
 
 ### VS Code
 
 Ao abrir a pasta, o VS Code sugere as extensões recomendadas (Prettier, oxc, Tailwind, glTF Tools...).
 Formatação e correções de lint rodam ao salvar. Em **Run and Debug**, use _"Depurar no Chrome"_ para colocar breakpoints direto no código React.
+
+## Como funciona
+
+1. **Estádio 3D:** o modelo `.glb` comprimido é carregado no `<Canvas>` do React Three Fiber.
+2. **Setores:** o modelo não tem setores separados, então eles são gerados por código. Um caminho em "U"
+   descreve a planta das bandejas, um perfil descreve a inclinação de cada uma, e uma tabela medida
+   no próprio modelo corrige as diferenças. Cada setor vira uma superfície translúcida colorida pela
+   faixa de preço. Passe o mouse para ver preço e disponibilidade; clique para a câmera voar até ele.
+
+Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ## Estrutura
 
@@ -60,14 +74,16 @@ bombonera-tickets/
 │   └── web/                     # Front-end (React + Three.js)
 │       ├── public/models/       # bombonera.glb otimizado (6,8 MB)
 │       └── src/
-│           ├── components/ui/   # Interface HTML sobre o 3D (header, botões, loading)
-│           ├── config/          # Constantes do estádio (dimensões, limites da câmera)
+│           ├── components/ui/   # Interface HTML sobre o 3D (header, legenda, tooltip, painel)
+│           ├── config/          # Constantes do estádio (caminho em U, perfis, câmera)
 │           ├── features/
-│           │   └── stadium/     # Cena 3D: canvas, modelo, câmera, ambiente
+│           │   ├── stadium/     # Cena 3D: canvas, modelo, câmera, ambiente
+│           │   ├── seating/     # Setores: geometria (lib), dados (data) e malhas 3D (components)
+│           │   └── debug/       # Painel de calibração (só com ?debug)
 │           └── store/           # Estado global (Zustand)
 ├── assets-src/                  # Modelo bruto do Sketchfab (fora do Git)
-├── docs/                        # Arquitetura e pipeline do modelo 3D
-└── scripts/                     # optimize-model.mjs
+├── docs/                        # Arquitetura, pipeline do modelo 3D e prompts das fases
+└── scripts/                     # optimize-model.mjs, probe-stands.mjs
 ```
 
 Mais detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) e [`docs/MODELO-3D.md`](docs/MODELO-3D.md).

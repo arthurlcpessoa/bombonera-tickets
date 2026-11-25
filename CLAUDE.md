@@ -20,14 +20,16 @@ O usuário navega pelo estádio em 3D, escolhe setor e cadeira e vê a visão ex
 
 ## Comandos (rodar na raiz)
 
-| Comando                  | Uso                                      |
-| ------------------------ | ---------------------------------------- |
-| `npm run dev`            | servidor em http://localhost:5173        |
-| `npm run typecheck`      | checagem de tipos                        |
-| `npm run lint`           | lint                                     |
-| `npm run format`         | formata tudo                             |
-| `npm run build`          | build de produção                        |
-| `npm run model:optimize` | regera o .glb (precisa de `assets-src/`) |
+| Comando                    | Uso                                                                  |
+| -------------------------- | -------------------------------------------------------------------- |
+| `npm run dev`              | servidor em http://localhost:5173                                    |
+| `npm run typecheck`        | checagem de tipos                                                    |
+| `npm run lint`             | lint                                                                 |
+| `npm run format`           | formata tudo                                                         |
+| `npm run build`            | build de produção                                                    |
+| `npm run model:optimize`   | regera o .glb (precisa de `assets-src/`)                             |
+| `npm run stands:probe`     | mede o modelo 3D (perfis; `-- check` mostra o erro dos setores)      |
+| `npm run stands:calibrate` | regera `standCalibration.ts` após mudar `STAND_PATH`/`TIER_PROFILES` |
 
 Antes de cada commit, rode `npm run typecheck`, `npm run lint` e `npm run format`.
 
@@ -57,7 +59,7 @@ sobre o modelo, não partes do .glb.
 ## Roadmap
 
 1. ✅ Setup + estádio 3D navegável
-2. Setores interativos (veja `docs/prompts/fase-2.md`)
+2. ✅ Setores interativos (veja `docs/prompts/fase-2.md` e `docs/ARQUITETURA.md`)
 3. Cadeiras com InstancedMesh e seleção
 4. Visão do assento em primeira pessoa
 5. Back-end (Fastify + Prisma + PostgreSQL), reserva temporária, checkout Mercado Pago sandbox
