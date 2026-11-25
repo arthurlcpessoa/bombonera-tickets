@@ -1,4 +1,5 @@
 import { getCategory, SECTORS } from '@/features/seating/data/sectors';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useStandsStore } from '@/store/useStandsStore';
 import { SeatInstances } from './SeatInstances';
@@ -18,6 +19,7 @@ export function SectorOverlay() {
   const hoveredId = useSelectionStore((s) => s.hoveredSectorId);
   const selectedId = useSelectionStore((s) => s.selectedSectorId);
   const showSectors = useSelectionStore((s) => s.showSectors);
+  const viewingSeat = useSeatViewStore((s) => s.viewingSeatId !== null);
 
   // Cursor de "mãozinha" sobre setores e cadeiras livres.
   useSceneCursor();
@@ -27,6 +29,9 @@ export function SectorOverlay() {
     if (id === hoveredId) return 'hovered';
     return selectedId ? 'dimmed' : 'idle';
   };
+
+  // Visão do assento: a cena fica "limpa", como na vida real (sem setores nem marcadores).
+  if (viewingSeat) return null;
 
   return (
     <group name="sectors">

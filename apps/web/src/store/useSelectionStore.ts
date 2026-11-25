@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useSeatViewStore } from './useSeatViewStore';
 import { useViewStore } from './useViewStore';
 
 /**
@@ -16,6 +17,8 @@ interface SelectionState {
   selectRequestId: number;
   setHovered: (id: string | null) => void;
   selectSector: (id: string) => void;
+  /** Marca o setor como escolhido SEM pedir voo de câmera (usado pela visão do assento). */
+  focusSector: (id: string) => void;
   clearSelection: () => void;
   setShowSectors: (show: boolean) => void;
 }
@@ -27,6 +30,8 @@ export const useSelectionStore = create<SelectionState>((set) => ({
   selectRequestId: 0,
   setHovered: (id) => set({ hoveredSectorId: id }),
   selectSector: (id) => {
+    // Trocar de setor encerra a visão do assento (a câmera volta a voar até o setor).
+    useSeatViewStore.getState().exitSeatView();
     // A câmera vai sair do preset atual: nenhum botão de visão fica marcado.
     useViewStore.getState().clearPreset();
     // O hover do setor é limpo: o setor escolhido deixa de reagir ao ponteiro (as cadeiras reagem).
@@ -36,6 +41,7 @@ export const useSelectionStore = create<SelectionState>((set) => ({
       selectRequestId: s.selectRequestId + 1,
     }));
   },
+  focusSector: (id) => set({ selectedSectorId: id, hoveredSectorId: null }),
   clearSelection: () => set({ selectedSectorId: null }),
   setShowSectors: (show) => set({ showSectors: show, hoveredSectorId: null }),
 }));

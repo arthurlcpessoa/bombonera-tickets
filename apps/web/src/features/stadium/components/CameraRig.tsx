@@ -1,10 +1,15 @@
 import { CameraControls } from '@react-three/drei';
 import { useEffect, useRef, type ComponentRef } from 'react';
-import { Box3, MathUtils, PerspectiveCamera, Vector3 } from 'three';
-import { CAMERA_LIMITS, SECTOR_CAMERA, SECTOR_PANEL_LAYOUT } from '@/config/stadium';
+import { Box3, MathUtils, PerspectiveCamera, Spherical, Vector3 } from 'three';
+import { CAMERA_LIMITS, SEAT_VIEW, SECTOR_CAMERA, SECTOR_PANEL_LAYOUT } from '@/config/stadium';
+import { findSeat } from '@/features/seating/data/seats';
 import { getSector } from '@/features/seating/data/sectors';
+import type { Seat } from '@/features/seating/lib/seatLayout';
+import { initialLookTarget, isWithinTurn, seatAzimuthRange } from '@/features/seating/lib/seatView';
 import { sectorFrame } from '@/features/seating/lib/sectorGeometry';
 import { DEFAULT_PRESET, getPreset, type CameraPresetId } from '@/features/stadium/cameraPresets';
+import { prefersReducedMotion } from '@/lib/motion';
+import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useStandsStore } from '@/store/useStandsStore';
 import { useViewStore } from '@/store/useViewStore';
@@ -19,7 +24,8 @@ type Controls = ComponentRef<typeof CameraControls>;
 
 /**
  * Controle de câmera: girar (arrastar), zoom (scroll/pinça) e mover (botão direito / dois dedos).
- * Também escuta os stores e anima a câmera até o preset escolhido ou até o setor clicado.
+ * Também escuta os stores e anima a câmera até o preset escolhido, até o setor clicado ou até os
+ * olhos de quem senta numa cadeira (visão do assento).
  */
 export function CameraRig() {
   const controls = useRef<Controls>(null);
@@ -40,7 +46,7 @@ export function CameraRig() {
         pos.sub(t).multiplyScalar(PORTRAIT_ZOOM_OUT).add(t);
       }
       void cc.setFocalOffset(0, 0, 0, animate); // desfaz o deslocamento usado nos setores
-      void cc.setLookAt(pos.x, pos.y, pos.z, ...target, animate);
+      void cc.setLookAt(pos.x, pos.y, pos.z, ...target, animate && !prefersReducedMotion());
     };
 
     cc.setBoundary(TARGET_BOUNDS);
@@ -59,9 +65,30 @@ export function CameraRig() {
       }
     });
 
+    // Visão do assento: entrar, trocar de cadeira e sair.
+    const seatOf = (id: string | null) =>
+      id ? (findSeat(id, useStandsStore.getState().model) ?? null) : null;
+
+    const unsubscribeSeatView = useSeatViewStore.subscribe((state, prev) => {
+      if (state.viewingSeatId && state.requestId !== prev.requestId) {
+        const found = seatOf(state.viewingSeatId);
+        if (!found) return;
+        // Vindo de outra cadeira: voo curto mantendo o olhar. Vindo de fora: voo até os olhos.
+        sitAt(cc, found.seat, prev.viewingSeatId !== null);
+      } else if (!state.viewingSeatId && prev.viewingSeatId) {
+        const found = seatOf(prev.viewingSeatId);
+        if (found) flyToSector(cc, found.sector.id, isPortrait());
+      }
+    });
+
+    // Link direto para uma cadeira (?assento=...): a visão já começa ativa, sem voo.
+    const initial = seatOf(useSeatViewStore.getState().viewingSeatId);
+    if (initial) sitAt(cc, initial.seat, false, false);
+
     return () => {
       unsubscribeView();
       unsubscribeSelection();
+      unsubscribeSeatView();
     };
   }, []);
 
@@ -76,6 +103,39 @@ export function CameraRig() {
       onStart={clearPreset} // usuário mexeu na câmera → nenhum preset ativo
     />
   );
+}
+
+/**
+ * "Senta" a câmera numa cadeira: posição = olhos do torcedor; alvo = um ponto a poucos
+ * centímetros à frente dos olhos, na direção do olhar. Como a câmera orbital gira EM VOLTA do
+ * alvo, um alvo quase colado nos olhos faz o giro parecer um "virar a cabeça".
+ *
+ * @param keepGaze trocando de cadeira: mantém para onde a pessoa estava olhando, se fizer sentido
+ */
+function sitAt(cc: Controls, seat: Seat, keepGaze: boolean, animate = true) {
+  const eye = new Vector3(...seat.eye);
+  let gaze = new Vector3(...initialLookTarget(seat.eye, seat.yaw)).sub(eye).normalize();
+
+  if (keepGaze) {
+    const current = cc.getTarget(new Vector3()).sub(cc.getPosition(new Vector3())).normalize();
+    if (isWithinTurn(seat.yaw, [current.x, current.z])) gaze = current;
+  }
+
+  const ahead = gaze.multiplyScalar(SEAT_VIEW.lookAhead).add(eye);
+  void cc.setFocalOffset(0, 0, 0, animate);
+  void cc.setLookAt(
+    eye.x,
+    eye.y,
+    eye.z,
+    ahead.x,
+    ahead.y,
+    ahead.z,
+    animate && !prefersReducedMotion(),
+  );
+  // O ângulo atual e o final ficam no mesmo "trecho" da volta: o voo gira pelo caminho curto.
+  cc.normalizeRotations();
+  const end = cc.getSpherical(new Spherical(), true);
+  [cc.minAzimuthAngle, cc.maxAzimuthAngle] = seatAzimuthRange(seat.yaw, end.theta);
 }
 
 /**
@@ -108,9 +168,13 @@ function flyToSector(cc: Controls, sectorId: string, portrait: boolean) {
     cz + toField[1] * horizontal,
   ] as const;
 
+  const animate = !prefersReducedMotion();
+  // Saindo da visão do assento: o giro horizontal volta a ser livre.
+  cc.minAzimuthAngle = -Infinity;
+  cc.maxAzimuthAngle = Infinity;
   const [ox, oy] = panelFocalOffset(cc, distance);
-  void cc.setFocalOffset(ox, oy, 0, true);
-  void cc.setLookAt(...position, cx, cy, cz, true);
+  void cc.setFocalOffset(ox, oy, 0, animate);
+  void cc.setLookAt(...position, cx, cy, cz, animate);
 }
 
 /**

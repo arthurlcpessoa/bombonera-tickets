@@ -142,6 +142,33 @@ export const PITCH = {
   length: 105,
 } as const;
 
+/**
+ * Visão do assento (Fase 4): câmera em primeira pessoa nos olhos do torcedor.
+ * Ângulos em graus; distâncias em metros.
+ */
+export const SEAT_VIEW = {
+  /**
+   * Planos de corte da câmera no modo assento. A fila da frente está a menos de 1 m dos olhos:
+   * com o near padrão (0,5 m) ela seria "cortada". O far cobre o céu (um cubo que vai até ~2,6 km).
+   */
+  near: 0.05,
+  far: 3000,
+  /** O ponto em volta do qual a câmera gira fica a poucos centímetros à frente dos olhos. */
+  lookAhead: 0.05,
+  /** Quanto dá para virar a cabeça para cada lado, a partir da frente da cadeira. */
+  turnDeg: 110,
+  /** Quanto dá para olhar para cima (acima do horizonte) e para baixo. */
+  lookUpDeg: 25,
+  lookDownDeg: 65,
+  /** Sensibilidade do arrastar (negativa na câmera: arrastar "puxa" a paisagem, como no Street View). */
+  rotateSpeed: 0.35,
+  /** Binóculo: zoom da lente, de 1× a 3×, e o passo das teclas +/−. */
+  maxZoom: 3,
+  zoomStep: 0.25,
+  /** O alvo inicial do olhar fica pelo menos a esta distância das linhas do campo. */
+  fieldMargin: 4,
+} as const;
+
 /** Limites da câmera orbital para o usuário não "atravessar" o estádio. */
 export const CAMERA_LIMITS = {
   minDistance: 25,
