@@ -1,4 +1,4 @@
-import { CameraControls } from '@react-three/drei';
+import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useEffect, useRef, type ComponentRef } from 'react';
 import { Box3, MathUtils, PerspectiveCamera, Spherical, Vector3 } from 'three';
 import { CAMERA_LIMITS, SEAT_VIEW, SECTOR_CAMERA, SECTOR_PANEL_LAYOUT } from '@/config/stadium';
@@ -21,6 +21,9 @@ const PORTRAIT_ZOOM_OUT = 1.8;
 const TARGET_BOUNDS = new Box3(new Vector3(-110, 0, -130), new Vector3(70, 40, 130));
 
 type Controls = ComponentRef<typeof CameraControls>;
+
+const { ACTION } = CameraControlsImpl;
+const DEG = Math.PI / 180;
 
 /**
  * Controle de câmera: girar (arrastar), zoom (scroll/pinça) e mover (botão direito / dois dedos).
@@ -50,6 +53,7 @@ export function CameraRig() {
     };
 
     cc.setBoundary(TARGET_BOUNDS);
+    const orbit = captureOrbitSettings(cc);
     lookAtPreset(useViewStore.getState().activePreset ?? DEFAULT_PRESET, false);
 
     // subscribe() avisa a cada mudança no store sem re-renderizar este componente.
@@ -73,22 +77,46 @@ export function CameraRig() {
       if (state.viewingSeatId && state.requestId !== prev.requestId) {
         const found = seatOf(state.viewingSeatId);
         if (!found) return;
+        const fromAnotherSeat = prev.viewingSeatId !== null;
+        if (!fromAnotherSeat) enterFirstPerson(cc);
         // Vindo de outra cadeira: voo curto mantendo o olhar. Vindo de fora: voo até os olhos.
-        sitAt(cc, found.seat, prev.viewingSeatId !== null);
+        sitAt(cc, found.seat, fromAnotherSeat);
       } else if (!state.viewingSeatId && prev.viewingSeatId) {
+        restoreOrbit(cc, orbit);
         const found = seatOf(prev.viewingSeatId);
         if (found) flyToSector(cc, found.sector.id, isPortrait());
       }
+      // Teclas +/− e botões do HUD pedem zoom pelo store.
+      if (state.zoomRequest.id !== prev.zoomRequest.id && state.viewingSeatId) {
+        void cc.zoomTo(state.zoomRequest.value, !prefersReducedMotion());
+      }
     });
+
+    // A câmera conta ao HUD o zoom atual (que também muda com o scroll e a pinça).
+    const reportZoom = () => useSeatViewStore.getState().reportZoom(cc.camera.zoom);
+    // Com o binóculo, arrastar gira mais devagar: senão a paisagem "voa" na tela.
+    const adjustTurnSpeed = () => {
+      if (!useSeatViewStore.getState().viewingSeatId) return;
+      const speed = -SEAT_VIEW.rotateSpeed / cc.camera.zoom;
+      cc.azimuthRotateSpeed = speed;
+      cc.polarRotateSpeed = speed;
+    };
+    cc.addEventListener('update', reportZoom);
+    cc.addEventListener('controlstart', adjustTurnSpeed);
 
     // Link direto para uma cadeira (?assento=...): a visão já começa ativa, sem voo.
     const initial = seatOf(useSeatViewStore.getState().viewingSeatId);
-    if (initial) sitAt(cc, initial.seat, false, false);
+    if (initial) {
+      enterFirstPerson(cc);
+      sitAt(cc, initial.seat, false, false);
+    }
 
     return () => {
       unsubscribeView();
       unsubscribeSelection();
       unsubscribeSeatView();
+      cc.removeEventListener('update', reportZoom);
+      cc.removeEventListener('controlstart', adjustTurnSpeed);
     };
   }, []);
 
@@ -103,6 +131,80 @@ export function CameraRig() {
       onStart={clearPreset} // usuário mexeu na câmera → nenhum preset ativo
     />
   );
+}
+
+/** O que a visão do assento muda na câmera, guardado para restaurar ao sair. */
+type OrbitSettings = ReturnType<typeof captureOrbitSettings>;
+
+function captureOrbitSettings(cc: Controls) {
+  const camera = cc.camera as PerspectiveCamera;
+  return {
+    mouseButtons: { ...cc.mouseButtons },
+    touches: { ...cc.touches },
+    azimuthRotateSpeed: cc.azimuthRotateSpeed,
+    polarRotateSpeed: cc.polarRotateSpeed,
+    minDistance: cc.minDistance,
+    minPolarAngle: cc.minPolarAngle,
+    maxPolarAngle: cc.maxPolarAngle,
+    minZoom: cc.minZoom,
+    maxZoom: cc.maxZoom,
+    near: camera.near,
+    far: camera.far,
+  };
+}
+
+/**
+ * Modo "girar a cabeça": a câmera fica parada nos olhos e só gira.
+ *
+ * - Arrastar (mouse ou um dedo) gira. A velocidade é NEGATIVA: arrastar para a direita "puxa" a
+ *   paisagem para a direita, como no Street View, em vez de orbitar em volta de um objeto.
+ * - Não há "dolly" (aproximar) nem "truck" (deslizar): o botão direito e o arrasto com dois dedos
+ *   não fazem nada, e scroll/pinça viram ZOOM DA LENTE (binóculo): muda o campo de visão, não a
+ *   posição. Por isso a câmera nunca "anda" para fora da cadeira.
+ * - Planos near e far: a câmera só desenha o que está entre eles. Veja SEAT_VIEW em config/stadium.ts.
+ */
+function enterFirstPerson(cc: Controls) {
+  cc.mouseButtons.left = ACTION.ROTATE;
+  cc.mouseButtons.middle = ACTION.NONE;
+  cc.mouseButtons.right = ACTION.NONE;
+  cc.mouseButtons.wheel = ACTION.ZOOM;
+  cc.touches.one = ACTION.TOUCH_ROTATE;
+  cc.touches.two = ACTION.TOUCH_ZOOM;
+  cc.touches.three = ACTION.NONE;
+  cc.azimuthRotateSpeed = -SEAT_VIEW.rotateSpeed;
+  cc.polarRotateSpeed = -SEAT_VIEW.rotateSpeed;
+  // A câmera fica a SEAT_VIEW.lookAhead do alvo: a distância mínima precisa caber nisso.
+  cc.minDistance = 0;
+  // Ângulo polar = ângulo a partir do "para cima" do vetor alvo → câmera. Olhar reto = 90°;
+  // olhar para baixo α graus = 90° − α (a câmera fica acima do alvo).
+  cc.minPolarAngle = (90 - SEAT_VIEW.lookDownDeg) * DEG;
+  cc.maxPolarAngle = (90 + SEAT_VIEW.lookUpDeg) * DEG;
+  cc.minZoom = 1;
+  cc.maxZoom = SEAT_VIEW.maxZoom;
+
+  const camera = cc.camera as PerspectiveCamera;
+  camera.near = SEAT_VIEW.near;
+  camera.far = SEAT_VIEW.far;
+  camera.updateProjectionMatrix();
+}
+
+/** Desfaz o modo assento: controles, limites, lente e planos near/far voltam ao normal. */
+function restoreOrbit(cc: Controls, orbit: OrbitSettings) {
+  Object.assign(cc.mouseButtons, orbit.mouseButtons);
+  Object.assign(cc.touches, orbit.touches);
+  cc.azimuthRotateSpeed = orbit.azimuthRotateSpeed;
+  cc.polarRotateSpeed = orbit.polarRotateSpeed;
+  cc.minDistance = orbit.minDistance;
+  cc.minPolarAngle = orbit.minPolarAngle;
+  cc.maxPolarAngle = orbit.maxPolarAngle;
+  cc.minZoom = orbit.minZoom;
+  cc.maxZoom = orbit.maxZoom;
+  void cc.zoomTo(1, !prefersReducedMotion());
+
+  const camera = cc.camera as PerspectiveCamera;
+  camera.near = orbit.near;
+  camera.far = orbit.far;
+  camera.updateProjectionMatrix();
 }
 
 /**

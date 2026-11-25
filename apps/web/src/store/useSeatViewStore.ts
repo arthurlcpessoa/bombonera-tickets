@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { SEAT_VIEW } from '@/config/stadium';
 import { findSeat } from '@/features/seating/data/seats';
 import { getSectorSeats } from '@/features/seating/lib/seatLayout';
 import { neighborSeat, type SeatDirection } from '@/features/seating/lib/seatNavigation';
@@ -22,6 +23,15 @@ interface SeatViewState {
   exitSeatView: () => void;
   /** Vai para a cadeira vizinha. Na ponta do setor, não faz nada. */
   moveSeatView: (direction: SeatDirection) => void;
+
+  /** Zoom atual do binóculo (1 = olho nu). Escrito pela câmera, lido pelo HUD. */
+  zoom: number;
+  /** Pedido de zoom vindo da interface (teclas +/−, botões): a câmera atende. */
+  zoomRequest: { value: number; id: number };
+  /** Pede para aproximar (step > 0) ou afastar (step < 0) o binóculo. */
+  zoomBy: (step: number) => void;
+  /** A câmera informa o zoom atual (scroll, pinça ou fim de uma animação). */
+  reportZoom: (zoom: number) => void;
 }
 
 export const useSeatViewStore = create<SeatViewState>((set, get) => ({
@@ -46,5 +56,18 @@ export const useSeatViewStore = create<SeatViewState>((set, get) => ({
     if (!found) return;
     const next = neighborSeat(getSectorSeats(found.sector, model), found.seat, direction);
     if (next) set((s) => ({ viewingSeatId: next.id, requestId: s.requestId + 1 }));
+  },
+
+  zoom: 1,
+  zoomRequest: { value: 1, id: 0 },
+  zoomBy: (step) =>
+    set((s) => ({
+      zoomRequest: {
+        value: Math.min(SEAT_VIEW.maxZoom, Math.max(1, s.zoom + step)),
+        id: s.zoomRequest.id + 1,
+      },
+    })),
+  reportZoom: (zoom) => {
+    if (Math.abs(get().zoom - zoom) > 0.01) set({ zoom });
   },
 }));
