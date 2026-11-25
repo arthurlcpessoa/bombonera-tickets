@@ -30,7 +30,7 @@ export function SectorTooltip() {
     <div
       ref={ref}
       role="tooltip"
-      className="bg-boca-navy/95 pointer-events-none fixed top-0 left-0 z-30 min-w-44 rounded-xl border border-white/15 px-3 py-2 text-sm shadow-2xl backdrop-blur pointer-coarse:hidden"
+      className="glass-card pointer-events-none fixed top-0 left-0 z-30 min-w-44 rounded-2xl px-3.5 py-2.5 text-sm pointer-coarse:hidden"
     >
       <p className="flex items-center gap-2 font-bold">
         <span

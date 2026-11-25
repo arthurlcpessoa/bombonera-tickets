@@ -54,7 +54,7 @@ export function SectorPanel() {
       role="dialog"
       aria-modal="false"
       aria-labelledby="sector-panel-title"
-      className="bg-boca-navy/95 pointer-events-auto mx-3 max-h-[50dvh] min-h-0 overflow-y-auto rounded-2xl border border-white/10 p-4 shadow-2xl backdrop-blur md:mx-0 md:max-h-none md:p-5"
+      className="glass-card pointer-events-auto mx-3 max-h-[50dvh] min-h-0 overflow-y-auto rounded-3xl p-5 md:mx-0 md:max-h-none md:p-6"
     >
       <header className="flex items-start justify-between gap-3">
         <div>
@@ -106,7 +106,7 @@ export function SectorPanel() {
       </dl>
 
       {away && (
-        <p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">
+        <p className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white/80">
           Setor exclusivo para a torcida visitante. Acesso por entrada separada.
         </p>
       )}

@@ -5,7 +5,30 @@
   --color-boca-navy: #0b1f4d;
   --color-boca-blue: #103f91;
   --color-boca-gold: #f2b51c;
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans:
+    'Plus Jakarta Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/*
+ * Cartões em "vidro fosco": fundo azul translúcido com um leve brilho no topo, borda fina,
+ * desfoque do 3D atrás e sombra longa e suave. Um só lugar para mudar o visual de todos os cartões.
+ * O arredondamento (rounded-*) fica em cada componente, porque varia com o tamanho do cartão.
+ */
+@utility glass-card {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.02)),
+    color-mix(in oklab, var(--color-boca-navy) 78%, transparent);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 24px 48px -16px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* Versão leve, para avisos que não devem chamar atenção (sem borda nem sombra). */
+@utility glass-subtle {
+  background: color-mix(in oklab, var(--color-boca-navy) 55%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
 }
 
 /*

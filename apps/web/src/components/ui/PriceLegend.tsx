@@ -14,14 +14,14 @@ export function PriceLegend() {
   return (
     <aside
       aria-label="Legenda de preços"
-      className="bg-boca-navy/80 absolute top-20 left-4 w-52 rounded-2xl border border-white/10 text-sm shadow-xl backdrop-blur sm:top-24"
+      className="glass-card absolute top-20 left-4 w-56 rounded-3xl text-sm sm:top-24"
     >
       <button
         type="button"
         aria-expanded={open}
         aria-controls={contentId}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl px-3 py-2 font-semibold"
+        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-3xl px-4 py-3 font-semibold"
       >
         Preços por setor
         <svg
@@ -33,12 +33,12 @@ export function PriceLegend() {
         </svg>
       </button>
 
-      <div id={contentId} hidden={!open} className="px-3 pb-3">
+      <div id={contentId} hidden={!open} className="px-4 pb-4">
         <ul className="space-y-1.5">
           {PRICE_CATEGORIES.map((c) => (
-            <li key={c.id} className="flex items-center gap-2">
+            <li key={c.id} className="flex items-center gap-2.5">
               <span
-                className="size-3 shrink-0 rounded-sm"
+                className="size-3 shrink-0 rounded-full ring-2 ring-white/10"
                 style={{ backgroundColor: c.color }}
                 aria-hidden
               />

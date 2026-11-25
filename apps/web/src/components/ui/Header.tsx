@@ -8,7 +8,7 @@ export function Header() {
         <p className="text-xs text-white/70 sm:text-sm">Escolha seu lugar em 3D na La Bombonera</p>
       </div>
 
-      <span className="border-boca-gold/40 bg-boca-navy/60 text-boca-gold pointer-events-auto hidden rounded-full border px-3 py-1 text-xs backdrop-blur sm:inline">
+      <span className="border-boca-gold/40 glass-subtle text-boca-gold pointer-events-auto hidden rounded-full border px-3 py-1 text-xs font-medium sm:inline">
         Projeto de portfólio
       </span>
     </header>

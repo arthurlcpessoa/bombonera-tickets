@@ -132,7 +132,7 @@ export function SeatMap({ sector }: SeatMapProps) {
         aria-label={`Mapa de cadeiras do setor ${sector.name}. Use as setas para andar e Enter para escolher.`}
         ref={viewport}
         onKeyDown={handleKeyDown}
-        className="max-h-44 overflow-auto rounded-xl bg-black/25 p-2 md:max-h-64"
+        className="max-h-44 overflow-auto rounded-2xl bg-black/25 p-2 ring-1 ring-white/5 ring-inset md:max-h-64"
       >
         {/* w-max + mx-auto: a grade centraliza quando cabe e rola de lado quando é larga. */}
         <div className="mx-auto flex w-max min-w-full flex-col-reverse" style={{ gap: GAP + 1 }}>

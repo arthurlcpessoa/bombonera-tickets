@@ -61,7 +61,7 @@ export function SeatSelectionSummary() {
   return (
     <section
       aria-label="Cadeiras escolhidas"
-      className="bg-boca-navy/95 pointer-events-auto mx-3 shrink-0 rounded-2xl border border-white/10 shadow-2xl backdrop-blur md:mx-0"
+      className="glass-card pointer-events-auto mx-3 shrink-0 rounded-3xl md:mx-0"
     >
       {/* Celular: barra compacta que expande. */}
       <button
@@ -69,7 +69,7 @@ export function SeatSelectionSummary() {
         aria-expanded={expanded}
         aria-controls={listId}
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl px-4 py-3 font-semibold md:hidden"
+        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-3xl px-5 py-3.5 font-semibold md:hidden"
       >
         <span>
           {countLabel} · <span className="text-boca-gold">{formatPrice(total)}</span>
@@ -83,7 +83,7 @@ export function SeatSelectionSummary() {
         </svg>
       </button>
 
-      <div id={listId} className={`px-4 pb-4 md:block md:pt-4 ${expanded ? '' : 'hidden'}`}>
+      <div id={listId} className={`px-5 pb-5 md:block md:pt-5 ${expanded ? '' : 'hidden'}`}>
         <h2 className="hidden text-sm font-bold md:block">Suas cadeiras ({countLabel})</h2>
 
         <div className="mt-2 max-h-36 space-y-3 overflow-y-auto md:max-h-28">
@@ -141,7 +141,7 @@ export function SeatSelectionSummary() {
           <button
             type="button"
             onClick={clearSeats}
-            className="col-span-2 cursor-pointer rounded-xl px-4 py-1.5 text-sm text-white/70 hover:bg-white/10 hover:text-white"
+            className="col-span-2 cursor-pointer rounded-2xl px-4 py-1.5 text-sm text-white/70 hover:bg-white/10 hover:text-white"
           >
             Limpar seleção
           </button>
@@ -156,7 +156,7 @@ function DisabledAction({ label, badge }: { label: string; badge: string }) {
     <button
       type="button"
       disabled
-      className="flex w-full cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl bg-white/10 px-2 py-2 text-sm leading-tight font-semibold text-white/50"
+      className="flex w-full cursor-not-allowed flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/5 px-2 py-2.5 text-sm leading-tight font-semibold text-white/50"
     >
       {label}
       <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium">{badge}</span>
