@@ -12,8 +12,8 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 | 1    | Setup do projeto + estádio 3D navegável                       | ✅ Concluída |
 | 2    | Setores interativos (hover, preço, câmera voando até o setor) | ✅ Concluída |
 | 3    | Cadeiras geradas por código (InstancedMesh) e seleção         | ✅ Concluída |
-| 4    | Visão do assento em primeira pessoa                           | ⏳ Próxima   |
-| 5    | Back-end: API, banco, reserva temporária, checkout (sandbox)  | —            |
+| 4    | Visão do assento em primeira pessoa                           | ✅ Concluída |
+| 5    | Back-end: API, banco, reserva temporária, checkout (sandbox)  | ⏳ Próxima   |
 | 6    | Acabamento: mobile, desempenho, deploy                        | —            |
 
 ## Stack
@@ -21,7 +21,7 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 - **TypeScript** em todo o projeto
 - **React 19 + Vite**: interface e build
 - **Three.js + React Three Fiber + drei**: renderização 3D
-- **Zustand**: estado global (visão ativa, setor escolhido; depois cadeira e carrinho)
+- **Zustand**: estado global (visão ativa, setor e cadeiras escolhidas, visão do assento)
 - **Tailwind CSS 4**: estilo da interface sobre o canvas
 - **glTF Transform + meshoptimizer + sharp**: pipeline de otimização do modelo 3D
 - **three-mesh-bvh**: raycasting rápido (script de medição e bloqueio do ponteiro pelo estádio)
@@ -68,6 +68,10 @@ Formatação e correções de lint rodam ao salvar. Em **Run and Debug**, use _"
 3. **Cadeiras:** no setor escolhido aparecem as cadeiras (29 mil no estádio, geradas sobre a mesma
    superfície do setor), com fila, número e status. Escolha até 6 no 3D ou no mini-mapa (que também
    funciona só com o teclado) e veja o resumo com o total.
+4. **Visão do assento:** "sente" em qualquer cadeira e veja o campo em primeira pessoa, na altura dos
+   olhos: olhe em volta (arrastar), use o binóculo (scroll ou pinça), compare as vizinhas pelas setas e
+   veja distância, altura, ângulo do campo e quanto dele fica escondido por alguma estrutura (calculado
+   com raios). O link `?assento=...` abre direto naquela cadeira.
 
 Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 

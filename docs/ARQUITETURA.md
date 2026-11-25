@@ -22,6 +22,7 @@ como dois setores de uma empresa que se comunicam por um quadro de avisos:
 | `useSelectionStore` | setor sob o mouse, setor escolhido, mostrar/ocultar    | setores 3D ↔ tooltip, painel, legenda      |
 | `useStandsStore`    | modelo das arquibancadas (forma + correção)            | painel `?debug` → setores 3D e `CameraRig` |
 | `useSeatStore`      | cadeira em hover, cadeiras escolhidas, aviso de limite | cadeiras 3D ↔ mini-mapa, tooltip, resumo   |
+| `useSeatViewStore`  | cadeira da visão do assento, zoom, visibilidade, aviso | HUD, resumo, 3D, URL ↔ `CameraRig`         |
 
 Exemplo: clicar num setor chama `selectSector('upper-3')`. O painel HTML lê o setor escolhido e abre;
 o `CameraRig`, que "assina" o store com `subscribe()`, calcula o enquadramento e voa até ele.
@@ -233,6 +234,92 @@ numeração, determinismo, filas de trás ≥ filas da frente nas curvas e capac
 Funções puras (só dependem da entrada, sem tela nem estado escondido) são fáceis de testar:
 basta chamar e comparar.
 
+## Como a visão do assento funciona (Fase 4)
+
+O torcedor "senta" numa cadeira e vê o campo como verá no dia do jogo, podendo olhar em volta,
+comparar as vizinhas e compartilhar um link. Tudo parte dos dados que cada `Seat` já tinha desde a
+Fase 3: `eye` (olhos, 1,15 m acima do assento) e `yaw` (para onde a cadeira olha).
+
+### 1. Estado (`store/useSeatViewStore.ts`)
+
+- `viewingSeatId` (null = fora da visão) e `requestId` (para voar de novo). `enterSeatView(id)`,
+  `exitSeatView()` e `moveSeatView(direção)`.
+- Entrar **não escolhe** a cadeira: dá para espiar vendidas e livres. O setor dela vira o selecionado
+  sem voo (`focusSector`). Trocar de setor (`selectSector`) encerra a visão.
+- Também guarda o zoom do binóculo (a câmera informa, a interface pede), o resultado da visibilidade,
+  a chave "Mostrar cadeiras à venda" e avisos curtos (link inválido).
+
+### 2. Câmera em primeira pessoa (`CameraRig`)
+
+- **Alvo inicial** (`seatView.ts`, puro): andando no chão na direção da cadeira, o ponto mais perto
+  do centro do campo (projeção do centro sobre essa reta, com um produto escalar), puxado para dentro
+  do retângulo do gramado. Olhar dos olhos até ele já inclina a cabeça na medida certa.
+- **"Girar a cabeça":** a câmera fica nos olhos e o ponto em volta do qual ela gira fica **5 cm à
+  frente**. Girar em volta de um ponto quase colado nos olhos é virar a cabeça. A velocidade é
+  negativa (arrastar "puxa" a paisagem, como no Street View).
+- **Sem andar:** dolly e truck ficam desligados; scroll e pinça viram **zoom da lente** (`camera.zoom`,
+  de 1× a 3×, o binóculo). Limites: ±110° em volta da frente da cadeira, 25° acima do horizonte e
+  65° abaixo. Os limites de azimute ficam no mesmo "trecho da volta" do ângulo atual da câmera
+  (`seatAzimuthRange`), senão ela daria um giro de 360° para entrar no limite.
+- **Planos near e far:** a câmera só desenha o que está entre a distância near e a far. A
+  profundidade de cada pixel é guardada com precisão limitada, e essa precisão depende da razão
+  far/near, sobretudo do near: um near pequeno demais faz superfícies distantes "brigarem"
+  (z-fighting). Por isso o near só desce para 0,05 m no modo assento (a fila da frente está a menos
+  de 1 m) e volta a 0,5 m ao sair; o far fica em 3 km, o bastante para o céu.
+- **Trocar de cadeira:** voo curto entre os olhos, mantendo a direção do olhar se ela couber no giro
+  da cadeira nova (`isWithinTurn`).
+- **Sair:** tudo volta (controles, limites, zoom, near/far) e a câmera voa até o setor da cadeira.
+  A configuração normal é guardada uma única vez numa `ref` (no StrictMode o efeito monta duas vezes).
+- **`prefers-reduced-motion`:** todos os voos (presets, setor, assento, zoom) viram cortes
+  instantâneos, e o fade da interface e a animação do HUD são desligados.
+
+### 3. Cena e interface
+
+- Setores e marcadores de cadeira somem (a visão fica "limpa"). A chave "Mostrar cadeiras à venda"
+  do HUD reexibe só as cadeiras do setor atual.
+- O `<main>` ganha o atributo `data-seat-view`; a classe `hide-in-seat-view` (em `index.css`) faz o
+  topo, a legenda, os botões de visão, a dica e o painel saírem com fade (`visibility: hidden` também os
+  tira do Tab). Os créditos continuam visíveis (exigência da licença do modelo).
+- **HUD** (`components/ui/SeatViewHud.tsx`): setor (com selo de visitante), fila, cadeira, preço e
+  status; as quatro métricas; a visibilidade; escolher/remover (vendida desabilitada, limite de 6);
+  setas para as vizinhas; binóculo; copiar link; sair. Teclado: setas, `Enter`, `Esc`, `+`/`-`.
+- **Vizinhas** (`seatNavigation.ts`, puro): direções de quem está sentado olhando o campo (↑ fila da
+  frente, ← cadeira de número menor). Na fila vizinha, a de `a` mais próximo (as filas têm tamanhos
+  diferentes nas curvas). Nunca sai do setor.
+- **Pontos de entrada:** "olho" em cada cadeira do resumo e o botão "Ver visão do assento" (última
+  escolhida); duplo clique numa cadeira no 3D; tecla `V` e botão no mini-mapa.
+
+### 4. Métricas e visibilidade
+
+- **Métricas** (`seatMetrics`, puras): distância dos olhos até o centro do campo e até o gol mais
+  próximo, altura dos olhos e o **ângulo do campo** (no chão, a diferença entre o canto mais à
+  esquerda e o mais à direita, medidos em relação à direção do centro para nenhum "dar a volta").
+- **Visibilidade por raios** (`SeatVisibilityProbe`): dos olhos até cada um de 60 pontos sobre o
+  gramado (grade 6 × 10, a 30 cm da grama), um raio. Se ele bate no estádio antes de chegar, aquele
+  ponto está escondido; a fração de raios bloqueados vira "Visão livre", "quase livre", "parcialmente"
+  ou "bastante obstruída". Usa o BVH do `StadiumModel` (espera ele ficar pronto) e roda só ao entrar ou
+  trocar de cadeira, nunca por quadro.
+- **O que não bloqueia:** materiais transparentes (`BLEND` no glTF: alambrado, vidros, telas), porque
+  através deles se vê o jogo; e o que estiver a menos de 25 cm dos olhos (seria a própria cabeça).
+- **Medido no modelo real:** as bandejas e as filas 1 a 5 dos palcos têm visão livre (a laje fica
+  acima da cabeça, o campo abaixo). A fila 6 dos palcos tem divisórias de camarote, que obstruem a
+  visão lateral das cadeiras vizinhas a elas. Algumas cadeiras geradas dessa fila caem rentes a uma
+  divisória (limite da geração da Fase 3, que não conhece as divisórias).
+
+### 5. Link compartilhável (`seatLink.ts` + `store/seatViewUrl.ts`)
+
+- Na visão, a URL vira `?assento=upper-3:F12-C07` com `history.replaceState` (sem recarregar e sem
+  encher o "voltar"). Outros parâmetros são mantidos (`?debug` continua funcionando).
+- Antes do primeiro render, um link válido entra direto na visão (a câmera já nasce sentada). Id
+  inválido: é ignorado, sai da URL e um aviso curto aparece. "Copiar link" usa `navigator.clipboard`.
+
+### 6. Testes
+
+`seatNavigation.test.ts` (vizinhas, pontas, filas de tamanhos diferentes), `seatView.test.ts` (alvo
+inicial, ângulos, limites, métricas, grade e classificação) e `seatLink.test.ts` (ler/montar a URL).
+
 ## Próximas fases
 
-- **Fase 4:** visão do assento: a câmera vai ao `eye` da cadeira, olhando o campo.
+- **Fase 5:** back-end (Fastify + Prisma + PostgreSQL) com o status real das cadeiras, reserva
+  temporária e checkout Mercado Pago sandbox.
+- **Fase 6:** acabamento e deploy (Vercel + Railway/Render).

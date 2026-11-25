@@ -62,6 +62,6 @@ sobre o modelo, não partes do .glb.
 1. ✅ Setup + estádio 3D navegável
 2. ✅ Setores interativos (veja `docs/prompts/fase-2.md` e `docs/ARQUITETURA.md`)
 3. ✅ Cadeiras com InstancedMesh e seleção (veja `docs/prompts/fase-3.md`)
-4. Visão do assento em primeira pessoa
+4. ✅ Visão do assento em primeira pessoa (veja `docs/prompts/fase-4.md`)
 5. Back-end (Fastify + Prisma + PostgreSQL), reserva temporária, checkout Mercado Pago sandbox
 6. Acabamento e deploy (Vercel + Railway/Render)
