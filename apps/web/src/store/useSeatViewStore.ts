@@ -24,6 +24,11 @@ interface SeatViewState {
   /** Vai para a cadeira vizinha. Na ponta do setor, não faz nada. */
   moveSeatView: (direction: SeatDirection) => void;
 
+  /** Aviso curto para a interface (ex.: link de assento inválido). */
+  notice: string | null;
+  showNotice: (text: string) => void;
+  dismissNotice: () => void;
+
   /** Resultado do teste de visibilidade por raios (null enquanto calcula). */
   visibility: { seatId: string; blocked: number; total: number } | null;
   setVisibility: (visibility: { seatId: string; blocked: number; total: number }) => void;
@@ -65,6 +70,10 @@ export const useSeatViewStore = create<SeatViewState>((set, get) => ({
     const next = neighborSeat(getSectorSeats(found.sector, model), found.seat, direction);
     if (next) set((s) => ({ viewingSeatId: next.id, requestId: s.requestId + 1 }));
   },
+
+  notice: null,
+  showNotice: (text) => set({ notice: text }),
+  dismissNotice: () => set({ notice: null }),
 
   visibility: null,
   setVisibility: (visibility) => set({ visibility }),

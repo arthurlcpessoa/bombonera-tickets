@@ -4,6 +4,10 @@ import { App } from '@/App';
 // Fonte embutida no build (não depende do Google Fonts). "Variable" = um só arquivo com todos os pesos.
 import '@fontsource-variable/plus-jakarta-sans';
 import '@/index.css';
+import { syncSeatViewWithUrl } from '@/store/seatViewUrl';
+
+// ?assento=... abre direto na visão daquela cadeira (antes do primeiro render).
+syncSeatViewWithUrl();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

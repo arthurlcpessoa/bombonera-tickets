@@ -32,6 +32,9 @@ const DEG = Math.PI / 180;
  */
 export function CameraRig() {
   const controls = useRef<Controls>(null);
+  // Configuração "normal" da câmera, guardada UMA vez: no modo de desenvolvimento o React monta
+  // os efeitos duas vezes, e a segunda vez já poderia encontrar a câmera no modo assento.
+  const orbitSettings = useRef<OrbitSettings | null>(null);
   const clearPreset = useViewStore((s) => s.clearPreset);
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export function CameraRig() {
     };
 
     cc.setBoundary(TARGET_BOUNDS);
-    const orbit = captureOrbitSettings(cc);
+    const orbit = (orbitSettings.current ??= captureOrbitSettings(cc));
     lookAtPreset(useViewStore.getState().activePreset ?? DEFAULT_PRESET, false);
 
     // subscribe() avisa a cada mudança no store sem re-renderizar este componente.

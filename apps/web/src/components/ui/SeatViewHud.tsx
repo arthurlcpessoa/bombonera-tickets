@@ -18,6 +18,8 @@ import { AwayBadge } from './AwayBadge';
 
 /** Por quanto tempo (ms) o aviso de limite de cadeiras fica na tela. */
 const LIMIT_NOTICE_MS = 4000;
+/** Por quanto tempo (ms) a confirmação "Link copiado" fica no botão. */
+const COPIED_MS = 2000;
 
 /** Teclas → direção. As setas são as de quem está sentado olhando o campo. */
 const KEY_DIRECTION: Record<string, SeatDirection> = {
@@ -49,6 +51,7 @@ function Hud({ seatId }: { seatId: string }) {
   const visibilityResult = useSeatViewStore((s) => s.visibility);
   const selectedIds = useSeatStore((s) => s.selectedSeatIds);
   const [limitHit, setLimitHit] = useState(false);
+  const [copy, setCopy] = useState<'idle' | 'copied' | 'error'>('idle');
   const panel = useRef<HTMLElement>(null);
 
   const found = findSeat(seatId, model);
@@ -67,6 +70,21 @@ function Hud({ seatId }: { seatId: string }) {
 
   const toggle = () => {
     if (!toggleViewingSeat()) setLimitHit(true);
+  };
+
+  // A confirmação do "Copiar link" volta ao normal sozinha.
+  useEffect(() => {
+    if (copy === 'idle') return;
+    const timeout = setTimeout(() => setCopy('idle'), COPIED_MS);
+    return () => clearTimeout(timeout);
+  }, [copy]);
+
+  /** A URL já tem ?assento=... (veja store/seatViewUrl.ts): basta copiá-la. */
+  const copyLink = () => {
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => setCopy('copied'))
+      .catch(() => setCopy('error'));
   };
 
   // Teclado: setas trocam de cadeira, Enter escolhe, Esc sai, +/− controlam o binóculo.
@@ -255,7 +273,34 @@ function Hud({ seatId }: { seatId: string }) {
         </div>
       </div>
 
-      <label className="mt-3 flex cursor-pointer items-center justify-between gap-2 border-t border-white/10 pt-3 text-xs text-white/75">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <button
+          type="button"
+          onClick={copyLink}
+          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold hover:bg-white/10"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+            <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+          </svg>
+          Copiar link
+        </button>
+        {/* role="status": o leitor de tela anuncia "Link copiado". */}
+        <span role="status" className="text-xs text-emerald-300 empty:hidden">
+          {copy === 'copied' && 'Link copiado'}
+          {copy === 'error' && <span className="text-amber-300">Não foi possível copiar</span>}
+        </span>
+      </div>
+
+      <label className="mt-3 flex cursor-pointer items-center justify-between gap-2 text-xs text-white/75">
         Mostrar cadeiras à venda
         <button
           type="button"

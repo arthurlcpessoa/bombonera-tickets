@@ -3,6 +3,7 @@ import { Credits } from '@/components/ui/Credits';
 import { Header } from '@/components/ui/Header';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { NavigationHint } from '@/components/ui/NavigationHint';
+import { NoticeToast } from '@/components/ui/NoticeToast';
 import { PriceLegend } from '@/components/ui/PriceLegend';
 import { SeatTooltip } from '@/components/ui/SeatTooltip';
 import { SeatViewHud } from '@/components/ui/SeatViewHud';
@@ -38,6 +39,7 @@ export function App() {
       <Credits />
       <SelectionDock />
       <SeatViewHud />
+      <NoticeToast />
       <SectorTooltip />
       <SeatTooltip />
       <LoadingScreen />
