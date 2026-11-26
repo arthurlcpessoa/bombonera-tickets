@@ -185,9 +185,12 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     const seat = seatAt(e);
-    // Só cadeira LIVRE é clicável (vendida, reservada por outra pessoa ou de estado desconhecido, não).
-    if (!seat || isDragGesture(e) || seatAvailability(seat.id) !== 'available') return;
-    useSeatStore.getState().toggleSeat(seat.id);
+    if (!seat || isDragGesture(e)) return;
+    const { selectedSeatIds, toggleSeat } = useSeatStore.getState();
+    // Desfazer a escolha sempre pode. Escolher, só cadeira LIVRE (vendida, reservada por outra
+    // pessoa ou de estado desconhecido, não).
+    if (!selectedSeatIds.includes(seat.id) && seatAvailability(seat.id) !== 'available') return;
+    toggleSeat(seat.id);
   };
 
   /**

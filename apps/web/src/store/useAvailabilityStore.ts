@@ -10,11 +10,13 @@
  */
 import { seatCode, type Match, type SectorAvailability } from '@bombonera/shared';
 import { create } from 'zustand';
+import { isInMyHold, useHoldStore } from './useHoldStore';
 
 /**
  * Estado de uma cadeira para a interface:
  * - available: livre (pode escolher);
- * - held: reservada por OUTRA pessoa nos últimos 10 minutos (não pode escolher);
+ * - held: reservada por OUTRA pessoa nos últimos 10 minutos (não pode escolher). As cadeiras da
+ *   MINHA reserva contam como livres para mim;
  * - sold: vendida;
  * - unknown: ainda não sabemos (carregando, ou a API está fora do ar).
  */
@@ -63,7 +65,11 @@ export function seatAvailability(
   seatId: string,
   state: Pick<AvailabilityState, 'seatSets'> = useAvailabilityStore.getState(),
 ): SeatAvailability {
-  return availabilityInSector(state.seatSets.get(seatId.slice(0, seatId.indexOf(':'))), seatId);
+  const availability = availabilityInSector(
+    state.seatSets.get(seatId.slice(0, seatId.indexOf(':'))),
+    seatId,
+  );
+  return availability === 'held' && isInMyHold(seatId) ? 'available' : availability;
 }
 
 /** Estado de uma cadeira, dados os conjuntos do setor dela (undefined = ainda não chegaram). */
@@ -80,6 +86,8 @@ export function availabilityInSector(
 
 /** O mesmo, como hook: o componente re-renderiza quando o estado daquela cadeira muda. */
 export function useSeatAvailability(seatId: string): SeatAvailability {
+  // Assina também a minha reserva: criar ou cancelar muda o que é "meu".
+  useHoldStore((s) => s.hold);
   return useAvailabilityStore((s) => seatAvailability(seatId, s));
 }
 

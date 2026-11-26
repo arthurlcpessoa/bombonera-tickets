@@ -7,7 +7,15 @@ import {
   parseSeatId,
   type Sector,
 } from '@bombonera/shared';
-import { formatPrice } from '@/features/seating/lib/pricing';
+import {
+  cancelActiveHold,
+  continueToHold,
+  holdMatchesSelection,
+} from '@/features/checkout/holdFlow';
+import { formatCountdown, useCountdown } from '@/features/checkout/useCountdown';
+import { formatCents, formatPrice } from '@/features/seating/lib/pricing';
+import { useAvailabilityStore } from '@/store/useAvailabilityStore';
+import { useHoldStore, type HoldNotice } from '@/store/useHoldStore';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { AwayBadge } from './AwayBadge';
@@ -23,9 +31,9 @@ interface ChosenSeat {
 }
 
 /**
- * Resumo das cadeiras escolhidas: agrupadas por setor, com remover, total e os próximos passos
- * (ainda desabilitados). No desktop fica abaixo do painel; no celular, é uma barra compacta
- * ("3 cadeiras · $ 195.000") que expande ao tocar.
+ * Resumo das cadeiras escolhidas: agrupadas por setor, com remover, total e o "Continuar", que
+ * reserva as cadeiras por 10 minutos (com cronômetro). No desktop fica abaixo do painel; no
+ * celular, é uma barra compacta ("3 cadeiras · $ 195.000") que expande ao tocar.
  */
 export function SeatSelectionSummary() {
   const selectedIds = useSeatStore((s) => s.selectedSeatIds);
@@ -35,6 +43,13 @@ export function SeatSelectionSummary() {
   const [dismissedWarningId, setDismissedWarningId] = useState(0);
   const showLimit = limitWarningId > dismissedWarningId;
   const listId = useId();
+  const hold = useHoldStore((s) => s.hold);
+  const busy = useHoldStore((s) => s.busy);
+  const notice = useHoldStore((s) => s.notice);
+  const online = useAvailabilityStore((s) => s.apiStatus === 'online');
+  const remaining = useCountdown(hold?.expiresAt ?? null);
+  // A reserva vale para a seleção atual? (Se a pessoa mexeu na seleção, é preciso reservar de novo.)
+  const reserved = holdMatchesSelection(hold, selectedIds);
 
   // Aviso amigável ao tentar passar do limite: some sozinho depois de alguns segundos.
   useEffect(() => {
@@ -57,12 +72,25 @@ export function SeatSelectionSummary() {
     return [...map.values()];
   }, [selectedIds]);
 
-  if (selectedIds.length === 0) return null;
+  // Sem cadeiras, o resumo some (mas um aviso como "a reserva venceu" ainda aparece).
+  if (selectedIds.length === 0) {
+    return notice ? (
+      <section
+        aria-label="Aviso da reserva"
+        className="glass-card pointer-events-auto mx-3 shrink-0 rounded-3xl p-4 md:mx-0"
+      >
+        <HoldNoticeText notice={notice} />
+      </section>
+    ) : null;
+  }
 
   const total = groups.reduce((sum, g) => sum + g.seats.reduce((s, seat) => s + seat.price, 0), 0);
   const count = selectedIds.length;
   const countLabel = `${count} ${count === 1 ? 'cadeira' : 'cadeiras'}`;
   const { removeSeat, clearSeats } = useSeatStore.getState();
+  // Total: com a reserva feita, o do SERVIDOR; antes disso, uma prévia pelo catálogo.
+  const totalLabel = reserved && hold ? formatCents(hold.totalCents) : formatPrice(total);
+  const clearAll = () => (hold ? void cancelActiveHold({ keepSelection: false }) : clearSeats());
   const { enterSeatView } = useSeatViewStore.getState();
   // O botão geral abre a última cadeira escolhida.
   const lastSeatId = selectedIds.at(-1);
@@ -81,7 +109,12 @@ export function SeatSelectionSummary() {
         className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-3xl px-5 py-3.5 font-semibold md:hidden"
       >
         <span>
-          {countLabel} · <span className="text-boca-gold">{formatPrice(total)}</span>
+          {countLabel} · <span className="text-boca-gold">{totalLabel}</span>
+          {reserved && (
+            <span className="ml-2 text-xs font-medium text-emerald-300 tabular-nums">
+              {formatCountdown(remaining)}
+            </span>
+          )}
         </span>
         <svg
           viewBox="0 0 24 24"
@@ -152,9 +185,7 @@ export function SeatSelectionSummary() {
 
         <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
           <span className="text-sm text-white/70">Total</span>
-          <span className="text-boca-gold text-lg font-bold tabular-nums">
-            {formatPrice(total)}
-          </span>
+          <span className="text-boca-gold text-lg font-bold tabular-nums">{totalLabel}</span>
         </div>
 
         {/* role="status": o leitor de tela lê o aviso quando ele aparece. */}
@@ -163,18 +194,64 @@ export function SeatSelectionSummary() {
             `Você pode escolher até ${ORDER_RULES.maxSeats} cadeiras por compra. Remova uma para trocar.`}
         </p>
 
+        {notice && (
+          <div className="mt-2">
+            <HoldNoticeText notice={notice} />
+          </div>
+        )}
+
+        {reserved && hold && (
+          // role="timer": o leitor de tela sabe que é um cronômetro (e não lê a cada segundo).
+          <div className="mt-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-3.5 py-2.5">
+            <p className="flex items-center justify-between gap-2 text-sm font-semibold text-emerald-200">
+              Cadeiras reservadas para você
+              <span role="timer" className="tabular-nums" aria-label="Tempo restante da reserva">
+                {formatCountdown(remaining)}
+              </span>
+            </p>
+            <p className="mt-0.5 text-xs text-emerald-100/70">
+              Ninguém mais consegue pegá-las enquanto o tempo não acabar.
+            </p>
+          </div>
+        )}
+
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => lastSeatId && enterSeatView(lastSeatId)}
-            className="bg-boca-gold text-boca-navy flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 text-sm leading-tight font-bold hover:brightness-110"
+            className={`flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 text-sm leading-tight font-bold ${
+              reserved
+                ? 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
+                : 'bg-boca-gold text-boca-navy hover:brightness-110'
+            }`}
           >
             Ver visão do assento
           </button>
-          <DisabledAction label="Continuar" badge="Em breve" />
+          {reserved ? (
+            <DisabledAction label="Pagamento" badge="Em breve" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => void continueToHold()}
+              disabled={busy || !online}
+              title={online ? undefined : 'Sem conexão com o servidor de ingressos'}
+              className="bg-boca-gold text-boca-navy flex w-full cursor-pointer items-center justify-center rounded-2xl px-2 py-2.5 text-sm leading-tight font-bold hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
+            >
+              {busy ? 'Reservando…' : hold ? 'Atualizar reserva' : 'Continuar'}
+            </button>
+          )}
+          {hold && (
+            <button
+              type="button"
+              onClick={() => void cancelActiveHold()}
+              className="col-span-2 cursor-pointer rounded-2xl px-4 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              Cancelar reserva
+            </button>
+          )}
           <button
             type="button"
-            onClick={clearSeats}
+            onClick={clearAll}
             className="col-span-2 cursor-pointer rounded-2xl px-4 py-1.5 text-sm text-white/70 hover:bg-white/10 hover:text-white"
           >
             Limpar seleção
@@ -183,6 +260,53 @@ export function SeatSelectionSummary() {
       </div>
     </section>
   );
+}
+
+/** Texto do aviso da reserva (cadeiras perdidas, reserva vencida ou erro). */
+function HoldNoticeText({ notice }: { notice: HoldNotice }) {
+  const dismiss = () => useHoldStore.getState().setNotice(null);
+  return (
+    // role="alert": o leitor de tela lê na hora (a pessoa precisa saber que perdeu cadeiras).
+    <p
+      role="alert"
+      className={`flex items-start gap-2 text-xs ${notice.kind === 'error' ? 'text-rose-300' : 'text-amber-300'}`}
+    >
+      <span className="flex-1">{noticeText(notice)}</span>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Fechar aviso"
+        className="-mt-0.5 cursor-pointer rounded-full px-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+      >
+        ×
+      </button>
+    </p>
+  );
+}
+
+function noticeText(notice: HoldNotice): string {
+  if (notice.kind === 'expired') {
+    return 'Sua reserva expirou e as cadeiras foram liberadas. Se ainda estiverem livres, é só continuar de novo.';
+  }
+  if (notice.kind === 'error') return notice.message;
+  const one = notice.seatIds.length === 1;
+  return one
+    ? `${describeSeats(notice.seatIds)} acabou de ser reservada por outra pessoa e saiu da sua seleção.`
+    : `${describeSeats(notice.seatIds)} acabaram de ser reservadas por outra pessoa e saíram da sua seleção.`;
+}
+
+/** ["lower-4:F03-C17"] → "Fila 3, cadeira 17 (Inferior 4)"; várias são unidas com "e". */
+function describeSeats(seatIds: readonly string[]): string {
+  const parts = seatIds.map((id) => {
+    const parsed = parseSeatId(id);
+    const sector = parsed && getSector(parsed.sectorId);
+    return parsed && sector ? `fila ${parsed.row}, cadeira ${parsed.number} (${sector.name})` : id;
+  });
+  const list =
+    parts.length <= 1
+      ? (parts[0] ?? 'uma cadeira')
+      : `${parts.slice(0, -1).join('; ')} e ${parts.at(-1)}`;
+  return list.charAt(0).toUpperCase() + list.slice(1);
 }
 
 function DisabledAction({ label, badge }: { label: string; badge: string }) {

@@ -7,6 +7,7 @@ import {
   seatAvailability,
   useAvailabilityStore,
 } from '@/store/useAvailabilityStore';
+import { isInMyHold, useHoldStore } from '@/store/useHoldStore';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';
@@ -44,7 +45,12 @@ export function SeatMap({ sector }: SeatMapProps) {
   const color = CATEGORY_COLORS[sector.categoryId];
   // Estado das cadeiras deste setor, vindo da API (re-renderiza só quando muda de verdade).
   const seatSets = useAvailabilityStore((s) => s.seatSets.get(sector.id));
-  const availabilityOf = (seat: Seat) => availabilityInSector(seatSets, seat.id);
+  const myHold = useHoldStore((s) => s.hold);
+  const availabilityOf = (seat: Seat) => {
+    const availability = availabilityInSector(seatSets, seat.id);
+    // As cadeiras da MINHA reserva aparecem como "reservadas" na API, mas para mim são minhas.
+    return availability === 'held' && isInMyHold(seat.id, myHold) ? 'available' : availability;
+  };
 
   // "Tabindex itinerante": só UMA cadeira entra na ordem do Tab (as outras têm tabIndex −1).
   // Quem usa teclado entra no mapa com um Tab e anda com as setas, em vez de apertar Tab 2 mil vezes.
@@ -131,8 +137,10 @@ export function SeatMap({ sector }: SeatMapProps) {
   };
 
   const toggle = (seat: Seat) => {
-    if (seatAvailability(seat.id) !== 'available') return; // vendida, reservada ou desconhecida
-    useSeatStore.getState().toggleSeat(seat.id);
+    const { selectedSeatIds, toggleSeat } = useSeatStore.getState();
+    // Desfazer a escolha sempre pode; escolher, só se estiver livre.
+    if (!selectedSeatIds.includes(seat.id) && seatAvailability(seat.id) !== 'available') return;
+    toggleSeat(seat.id);
   };
 
   const hover = (seat: Seat | null) => {

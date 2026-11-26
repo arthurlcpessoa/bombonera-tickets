@@ -43,7 +43,10 @@ export const sectorSeatsQuery = (matchId: string, sectorId: string) =>
     refetchInterval: REFRESH_MS,
   });
 
-export function createQueryClient() {
+/** O "caderno" (cache) do TanStack Query: um só para o site inteiro. */
+export const queryClient = createQueryClient();
+
+function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {

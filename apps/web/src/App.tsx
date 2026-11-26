@@ -12,6 +12,7 @@ import { SectorTooltip } from '@/components/ui/SectorTooltip';
 import { SelectionDock } from '@/components/ui/SelectionDock';
 import { ViewSwitcher } from '@/components/ui/ViewSwitcher';
 import { AvailabilitySync } from '@/features/availability/AvailabilitySync';
+import { HoldWatcher } from '@/features/checkout/HoldWatcher';
 import { StadiumCanvas } from '@/features/stadium/components/StadiumCanvas';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 
@@ -33,6 +34,7 @@ export function App() {
   return (
     <main className="relative h-full w-full" data-seat-view={viewingSeat ? '' : undefined}>
       <AvailabilitySync />
+      <HoldWatcher />
       <StadiumCanvas />
 
       <Header />

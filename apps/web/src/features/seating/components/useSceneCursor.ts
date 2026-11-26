@@ -18,7 +18,10 @@ export function useSceneCursor() {
       const { hoveredSeatId, hoverSource } = useSeatStore.getState();
       let clickable = showSectors && hoveredSectorId !== null;
       if (hoveredSeatId && hoverSource === 'scene') {
-        clickable = seatAvailability(hoveredSeatId) === 'available';
+        const { selectedSeatIds } = useSeatStore.getState();
+        clickable =
+          selectedSeatIds.includes(hoveredSeatId) ||
+          seatAvailability(hoveredSeatId) === 'available';
       }
       const next = clickable ? 'pointer' : '';
       if (next !== current) {
