@@ -1,8 +1,8 @@
 /**
  * Contas da visão do assento (TypeScript puro, sem React nem Three.js): fáceis de testar.
  */
-import { PITCH, SEAT_VIEW } from '@/config/stadium';
-import type { Point3 } from './stadiumPath';
+import { PITCH, type Point3 } from '@bombonera/shared';
+import { SEAT_VIEW } from '@/config/stadium';
 
 // ---------------------------------------------------------------------------------------------
 // Alvo inicial do olhar

@@ -27,6 +27,23 @@ como dois setores de uma empresa que se comunicam por um quadro de avisos:
 Exemplo: clicar num setor chama `selectSector('upper-3')`. O painel HTML lê o setor escolhido e abre;
 o `CameraRig`, que "assina" o store com `subscribe()`, calcula o enquadramento e voa até ele.
 
+### Código compartilhado (`packages/shared`)
+
+O site e a API (Fase 5) precisam gerar **as mesmas cadeiras**, com os mesmos ids (`upper-3:F12-C07`).
+Por isso a lógica pura mora num pacote do workspace, `@bombonera/shared`, importado pelos dois como se
+fosse uma biblioteca do npm (o npm cria um atalho em `node_modules/@bombonera/shared`). É a "planta do
+prédio" que o arquiteto (site) e o síndico (API) consultam: uma só, para nunca divergir.
+
+- **No shared:** caminho em U, perfis e calibração (`stadium.ts`, `stadiumPath.ts`,
+  `standCalibration.ts`), superfícies dos setores (`sectorGeometry.ts`), gerador de cadeiras
+  (`seatLayout.ts`, `random.ts`), setores e faixas de preço (`sectors.ts`), consulta por id
+  (`seats.ts`) e regras da compra (`ORDER_RULES`).
+- **No site:** tudo o que é desenho ou interface: a malha 3D dos setores
+  (`features/seating/lib/sectorGeometry.ts`, com Three.js), as cores (`config/colors.ts`) e as
+  constantes de câmera, painel, HUD e visão do assento (`config/stadium.ts`).
+- **Regras:** o shared não importa React, Three.js nem nada de `apps/*`, e usa caminhos relativos
+  (o alias `@/` é só do site). O pacote é consumido como TypeScript direto, sem etapa de build.
+
 ### O jogo à venda (`features/match`)
 
 O topo da tela mostra o jogo do ingresso (`components/ui/MatchInfo.tsx`, que é o `h1` da página).
@@ -68,7 +85,7 @@ Unidades em **metros**, na escala real do estádio.
 O modelo do Sketchfab é só o **cenário**: ele é agrupado por material e não tem setores separados.
 Por isso os setores são uma **camada de dados + geometria gerada por código** por cima dele.
 
-### 1. O caminho em "U" (`seating/lib/stadiumPath.ts`)
+### 1. O caminho em "U" (`shared/src/stadiumPath.ts`)
 
 Visto de cima, as três bandejas contornam o campo como um "U" de cantos arredondados, aberto do lado
 dos palcos (+X). Cada ponto desse caminho tem um número **t** de 0 a 1, como a quilometragem de
@@ -89,7 +106,7 @@ A solução é a mesma de calibrar um instrumento: **modelo simples + tabela de 
 1. `scripts/probe-stands.mjs` carrega o `.glb` no Node e solta "raios" verticais sobre as
    arquibancadas (como um agrimensor medindo o terreno). Usa um BVH (índice espacial) para ser rápido.
 2. Para 201 pontos ao longo do U, ele mede onde a rampa real de cada bandeja está e compara com o
-   modelo. A diferença vira a tabela `seating/data/standCalibration.ts` (arquivo gerado).
+   modelo. A diferença vira a tabela `shared/src/standCalibration.ts` (arquivo gerado).
 3. `tierPoint()` soma a correção ao offset. Erro final: ~4 cm em média, máximo ~55 cm.
 
 O script importa o **mesmo** `stadiumPath.ts` do site: o Node 26 executa TypeScript simples
@@ -103,7 +120,7 @@ npm run stands:probe -- up x y z  # o que há acima de um ponto (altura livre)
 npm run stands:calibrate          # mede de novo e regrava a tabela de correção
 ```
 
-Se mudar `STAND_PATH` ou `TIER_PROFILES` em `src/config/stadium.ts`, rode `stands:calibrate` de novo
+Se mudar `STAND_PATH` ou `TIER_PROFILES` em `shared/src/stadium.ts`, rode `stands:calibrate` de novo
 (a correção é medida em relação a esses valores).
 
 #### O "ponto cego" dos raios verticais
@@ -143,7 +160,7 @@ Medido hoje: a última fila tem pelo menos 1,5 m de folga (inferior) e 2,4 m (m�
 de ~35 cm na média ficam de fora: é onde a cadeira cairia sobre o corrimão de uma escada (Metal04).
 Para investigar um ponto: `npm run stands:probe -- up x y z`.
 
-### 3. Setores como superfícies parametrizadas (`seating/lib/sectorGeometry.ts`)
+### 3. Setores como superfícies parametrizadas (`shared/src/sectorGeometry.ts`)
 
 Todo setor vira uma função **(a, b) → ponto 3D**, como um lençol esticado com coordenadas:
 `a` anda ao longo do setor e `b` sobe a arquibancada. Com essa função, um único código gera:
@@ -156,11 +173,12 @@ Todo setor vira uma função **(a, b) → ponto 3D**, como um lençol esticado c
 Há dois tipos de forma: `curved` (trecho [t0, t1] de uma bandeja do U) e `straight` (fatia da
 platea dos palcos, um retângulo inclinado).
 
-### 4. Dados (`seating/data/sectors.ts`)
+### 4. Dados (`shared/src/sectors.ts`)
 
 - 3 bandejas × 8 blocos ao longo do U (corredores de 1,6 m) + 5 blocos de palcos = **29 setores**.
   Os palcos seguem os corredores (escadas) **reais** do modelo, medidos na Fase 3 (`PALCOS_BLOCKS_Z`).
-- Faixas de preço com cor própria (`PRICE_CATEGORIES`). As cores evitam azul e amarelo, as cores
+- Faixas de preço (`PRICE_CATEGORIES`, no shared), cada uma com cor própria (`CATEGORY_COLORS`, em
+  `apps/web/src/config/colors.ts`, porque cor é assunto só do site). As cores evitam azul e amarelo, as cores
   das cadeiras do modelo, para não "sumirem" quando misturadas a elas.
 - **Torcida visitante:** o bloco 8 da bandeja superior (id `upper-8`, nome "Visitante") é o setor da
   torcida visitante. Isso é um **dado**, não uma regra no código: o setor tem `audience: 'away'`
@@ -201,7 +219,7 @@ dinâmico (`React.lazy`), então fica num arquivo separado que o site normal nun
 Ao escolher um setor, a superfície colorida dele quase some (fica o contorno dourado) e aparecem as
 cadeiras: cada uma com fila e número, colorida pelo status.
 
-### 1. Geração (`seating/lib/seatLayout.ts`, TypeScript puro)
+### 1. Geração (`shared/src/seatLayout.ts`, TypeScript puro)
 
 Nada de matemática nova: **toda cadeira é um ponto (a, b) da mesma superfície do setor** da Fase 2.
 

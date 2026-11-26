@@ -3,9 +3,9 @@
  * O gerador é uma função pura: basta chamá-la e conferir o resultado, sem navegador nem 3D.
  */
 import { describe, expect, it } from 'vitest';
-import { SEAT_LAYOUT } from '@/config/stadium';
-import { SECTORS, TIER_LABELS, type Sector } from '@/features/seating/data/sectors';
-import { DEFAULT_STANDS_MODEL } from '@/features/seating/data/standsModel';
+import { SEAT_LAYOUT } from './stadium';
+import { SECTORS, TIER_LABELS, type Sector } from './sectors';
+import { DEFAULT_STANDS_MODEL } from './standsModel';
 import { generateSeats, getSectorSeats, parseSeatId, seatId, seatsByRow } from './seatLayout';
 import { sectorSurface } from './sectorGeometry';
 import { hasHeadroom, samplePath, tierHeight } from './stadiumPath';

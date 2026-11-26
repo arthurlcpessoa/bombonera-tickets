@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
+import { PRICE_CATEGORIES, type PriceCategory, SECTORS } from '@bombonera/shared';
+import { CATEGORY_COLORS } from '@/config/colors';
 import { SECTOR_PANEL_LAYOUT } from '@/config/stadium';
-import { PRICE_CATEGORIES, SECTORS, type PriceCategory } from '@/features/seating/data/sectors';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSelectionStore } from '@/store/useSelectionStore';
 
@@ -107,7 +108,7 @@ function CategoryRow({ category }: { category: PriceCategory }) {
     <>
       <span
         className="size-3 shrink-0 rounded-full ring-2 ring-white/10"
-        style={{ backgroundColor: category.color }}
+        style={{ backgroundColor: CATEGORY_COLORS[category.id] }}
         aria-hidden
       />
       <span className="text-white/85">{category.label}</span>

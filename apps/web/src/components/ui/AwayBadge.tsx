@@ -1,7 +1,7 @@
-import { getCategory } from '@/features/seating/data/sectors';
+import { CATEGORY_COLORS } from '@/config/colors';
 
 /** Cor do selo = cor da faixa "Visitante", a mesma da legenda e do 3D. */
-const AWAY_COLOR = getCategory('visitante').color;
+const AWAY_COLOR = CATEGORY_COLORS.visitante;
 
 /** Selo "Torcida visitante", usado no tooltip, no painel e no resumo da seleção. */
 export function AwayBadge({ className = '' }: { className?: string }) {

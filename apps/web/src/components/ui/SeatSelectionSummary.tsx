@@ -1,7 +1,12 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { ORDER_RULES } from '@/config/stadium';
-import { getCategory, getSector, isAwaySector, type Sector } from '@/features/seating/data/sectors';
-import { parseSeatId } from '@/features/seating/lib/seatLayout';
+import {
+  getCategory,
+  getSector,
+  isAwaySector,
+  ORDER_RULES,
+  parseSeatId,
+  type Sector,
+} from '@bombonera/shared';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';

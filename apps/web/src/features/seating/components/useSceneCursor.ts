@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { findSeat } from '@/features/seating/data/seats';
+import { findSeat } from '@bombonera/shared';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useStandsStore } from '@/store/useStandsStore';

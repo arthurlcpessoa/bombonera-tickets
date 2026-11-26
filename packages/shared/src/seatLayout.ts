@@ -12,11 +12,11 @@
  *
  * SENTIDO DA NUMERAÇÃO: a cadeira 1 fica na ponta de a = 0 e os números crescem com `a`.
  * Os setores são definidos para que `a` crescente vá para a DIREITA de quem está sentado
- * olhando o campo (veja os palcos em data/sectors.ts). Ou seja: em toda a Bombonera, a cadeira 1
+ * olhando o campo (veja os palcos em sectors.ts). Ou seja: em toda a Bombonera, a cadeira 1
  * fica à esquerda do torcedor. Quem olha a partir do campo vê a cadeira 1 à direita.
  */
-import { SEAT_LAYOUT, SECTOR_LAYOUT } from '@/config/stadium';
-import type { Sector } from '@/features/seating/data/sectors';
+import { SEAT_LAYOUT, SECTOR_LAYOUT } from './stadium';
+import type { Sector } from './sectors';
 import { createRandom } from './random';
 import { sectorDepth, sectorSurface, type StandsModel, type Surface } from './sectorGeometry';
 import { hasHeadroom, type Point3 } from './stadiumPath';

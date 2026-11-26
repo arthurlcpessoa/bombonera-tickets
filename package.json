@@ -5,7 +5,8 @@
   "description": "Venda de ingressos com escolha de assento em 3D na La Bombonera — projeto de portfólio.",
   "type": "module",
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "engines": {
     "node": ">=22"
@@ -14,14 +15,14 @@
     "dev": "npm run dev -w apps/web",
     "build": "npm run build -w apps/web",
     "preview": "npm run preview -w apps/web",
-    "lint": "npm run lint -w apps/web",
-    "typecheck": "npm run typecheck -w apps/web",
-    "test": "npm run test -w apps/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "model:optimize": "node scripts/optimize-model.mjs",
     "stands:probe": "node --no-deprecation scripts/probe-stands.mjs",
-    "stands:calibrate": "node --no-deprecation scripts/probe-stands.mjs calibrate && prettier --write apps/web/src/features/seating/data/standCalibration.ts"
+    "stands:calibrate": "node --no-deprecation scripts/probe-stands.mjs calibrate && prettier --write packages/shared/src/standCalibration.ts"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.1.1",

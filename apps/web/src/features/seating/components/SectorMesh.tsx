@@ -2,14 +2,10 @@ import { Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { memo, useEffect, useMemo } from 'react';
 import { DoubleSide } from 'three';
+import { type Sector, sectorOutline, type StandsModel } from '@bombonera/shared';
 import { COLORS } from '@/config/colors';
-import { SECTOR_LAYOUT } from '@/config/stadium';
-import type { Sector } from '@/features/seating/data/sectors';
-import {
-  buildSectorGeometry,
-  sectorOutline,
-  type StandsModel,
-} from '@/features/seating/lib/sectorGeometry';
+import { SECTOR_RENDER } from '@/config/stadium';
+import { buildSectorGeometry } from '@/features/seating/lib/sectorGeometry';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { isDragGesture, supportsHover } from './pointerRules';
 
@@ -51,8 +47,8 @@ export const SectorMesh = memo(function SectorMesh({
   const geometry = useMemo(
     () =>
       buildSectorGeometry(shape, model, {
-        lift: SECTOR_LAYOUT.lift[shape.kind],
-        maxSegment: SECTOR_LAYOUT.segmentLength,
+        lift: SECTOR_RENDER.lift[shape.kind],
+        maxSegment: SECTOR_RENDER.segmentLength,
       }),
     [shape, model],
   );
@@ -63,8 +59,8 @@ export const SectorMesh = memo(function SectorMesh({
     () =>
       state === 'selected'
         ? sectorOutline(shape, model, {
-            lift: SECTOR_LAYOUT.lift[shape.kind] + OUTLINE_EXTRA_LIFT,
-            maxSegment: SECTOR_LAYOUT.segmentLength,
+            lift: SECTOR_RENDER.lift[shape.kind] + OUTLINE_EXTRA_LIFT,
+            maxSegment: SECTOR_RENDER.segmentLength,
           })
         : null,
     [shape, model, state],

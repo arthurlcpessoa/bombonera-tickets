@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
-import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@/features/seating/data/sectors';
+import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@bombonera/shared';
+import { CATEGORY_COLORS } from '@/config/colors';
 import { formatAvailability, formatPrice } from '@/features/seating/lib/pricing';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { AwayBadge } from './AwayBadge';
@@ -35,7 +36,7 @@ export function SectorTooltip() {
       <p className="flex items-center gap-2 font-bold">
         <span
           className="size-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: category.color }}
+          style={{ backgroundColor: CATEGORY_COLORS[category.id] }}
           aria-hidden
         />
         {sector.name}

@@ -14,18 +14,20 @@ O usuário navega pelo estádio em 3D, escolhe setor e cadeira e vê a visão ex
 ## Stack
 
 - Monorepo com npm workspaces. Front-end em `apps/web`; a API entrará em `apps/api` na Fase 5.
+- `packages/shared` (`@bombonera/shared`): código **puro** usado pelo site e pela API (geometria do
+  estádio, gerador de cadeiras, setores, preços, regras). Sem React, sem Three.js, sem alias `@/`.
 - React 19 + Vite + TypeScript, Three.js + React Three Fiber + drei, Zustand e Tailwind CSS 4.
 - Lint: oxlint. Formatação: Prettier (aspas simples, ponto e vírgula, 100 colunas).
-- Alias de import: `@/` → `apps/web/src/`.
+- Alias de import: `@/` → `apps/web/src/` (só dentro do site; o shared usa caminhos relativos).
 
 ## Comandos (rodar na raiz)
 
 | Comando                    | Uso                                                                  |
 | -------------------------- | -------------------------------------------------------------------- |
 | `npm run dev`              | servidor em http://localhost:5173                                    |
-| `npm run typecheck`        | checagem de tipos                                                    |
-| `npm test`                 | testes (Vitest) das funções puras                                    |
-| `npm run lint`             | lint                                                                 |
+| `npm run typecheck`        | checagem de tipos (todos os workspaces)                              |
+| `npm test`                 | testes (Vitest) de todos os workspaces                               |
+| `npm run lint`             | lint (todos os workspaces)                                           |
 | `npm run format`           | formata tudo                                                         |
 | `npm run build`            | build de produção                                                    |
 | `npm run model:optimize`   | regera o .glb (precisa de `assets-src/`)                             |
@@ -39,7 +41,8 @@ Antes de cada commit, rode `npm test`, `npm run typecheck`, `npm run lint` e `np
 - Identificadores em inglês (`SectorOverlay`, `useSelectionStore`). Comentários, documentação e textos da UI em **português**.
 - Organização por _feature_: `src/features/<feature>/{components,data,lib}`. A UI HTML genérica fica em `src/components/ui`.
 - Interface HTML (fora do canvas) e cena 3D (dentro do `<Canvas>`) **só conversam via stores Zustand** em `src/store/`.
-- Constantes do estádio ficam em `src/config/stadium.ts`. Evite números mágicos espalhados.
+- Medidas do estádio e regras da compra ficam em `packages/shared/src/stadium.ts`; constantes visuais
+  (câmera, painel, HUD, cores) em `apps/web/src/config/`. Evite números mágicos espalhados.
 - Não versionar `assets-src/` (modelo bruto, pesado).
 - Mensagens de commit em português, no imperativo, com corpo explicando o que mudou.
 

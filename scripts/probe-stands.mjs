@@ -47,16 +47,16 @@ import {
   tierHeight,
   tierOffset,
   tierPoint,
-} from '../apps/web/src/features/seating/lib/stadiumPath.ts';
+} from '../packages/shared/src/stadiumPath.ts';
 import {
   SEAT_LAYOUT,
   SECTOR_LAYOUT,
   STAND_PATH,
   TIER_PROFILES,
-} from '../apps/web/src/config/stadium.ts';
+} from '../packages/shared/src/stadium.ts';
 
 const MODEL = 'apps/web/public/models/bombonera.glb';
-const CALIBRATION_FILE = 'apps/web/src/features/seating/data/standCalibration.ts';
+const CALIBRATION_FILE = 'packages/shared/src/standCalibration.ts';
 /** Altura de onde os raios partem (acima de tudo no modelo). */
 const SKY = 100;
 /** Impactos "crus" impressos por raio nos perfis (0 = só o resumo por bandeja). */
@@ -392,11 +392,11 @@ function calibrate(samples = 201) {
  * ARQUIVO GERADO por \`npm run stands:calibrate\` (scripts/probe-stands.mjs). Não edite à mão.
  *
  * Correção, em metros, do offset de cada bandeja ao longo do U (${samples} amostras de t = 0 a 1),
- * medida no modelo 3D em relação a STAND_PATH e TIER_PROFILES (src/config/stadium.ts).
+ * medida no modelo 3D em relação a STAND_PATH e TIER_PROFILES (stadium.ts).
  * noHeadroom: trechos [fila, t0, t1] com menos de ${MIN_HEADROOM} m livres acima dos olhos
  * (${HEADROOM_SAMPLES} amostras ao longo do U). Cadeiras nesses trechos não são geradas.
  */
-import type { CurvedTier, TierCorrection } from '@/features/seating/lib/stadiumPath';
+import type { CurvedTier, TierCorrection } from './stadiumPath';
 
 export const STAND_CALIBRATION: Record<CurvedTier, TierCorrection> = {
 ${body}

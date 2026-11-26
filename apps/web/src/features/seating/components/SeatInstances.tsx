@@ -1,12 +1,16 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, InstancedMesh, MeshLambertMaterial, Object3D } from 'three';
-import { COLORS } from '@/config/colors';
-import { seatIndexMap } from '@/features/seating/data/seats';
-import { getCategory, getSector, type Sector } from '@/features/seating/data/sectors';
-import { getSectorSeats, type Seat } from '@/features/seating/lib/seatLayout';
+import {
+  getSector,
+  getSectorSeats,
+  type Seat,
+  seatIndexMap,
+  type Sector,
+  type StandsModel,
+} from '@bombonera/shared';
+import { CATEGORY_COLORS, COLORS } from '@/config/colors';
 import { createSeatMarkerGeometry } from '@/features/seating/lib/seatGeometry';
-import type { StandsModel } from '@/features/seating/lib/sectorGeometry';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
@@ -54,7 +58,7 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
 
   // Cores base: livre = cor da faixa de preço; vendida = cinza escuro.
   const palette = useMemo(() => {
-    const available = new Color(getCategory(sector.categoryId).color);
+    const available = new Color(CATEGORY_COLORS[sector.categoryId]);
     const sold = new Color(COLORS.soldSeat);
     const gold = new Color(COLORS.gold);
     const white = new Color('#ffffff');

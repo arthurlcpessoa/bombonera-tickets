@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@/features/seating/data/sectors';
+import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@bombonera/shared';
+import { CATEGORY_COLORS } from '@/config/colors';
 import {
   availabilityLevel,
   formatAvailability,
@@ -62,7 +63,7 @@ export function SectorPanel() {
           <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase">
             <span
               className="size-2.5 rounded-full"
-              style={{ backgroundColor: category.color }}
+              style={{ backgroundColor: CATEGORY_COLORS[category.id] }}
               aria-hidden
             />
             {TIER_LABELS[sector.tier]}
@@ -121,7 +122,7 @@ export function SectorPanel() {
         className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/70"
         aria-label="Legenda"
       >
-        <LegendItem label="Livre" style={{ backgroundColor: category.color }} />
+        <LegendItem label="Livre" style={{ backgroundColor: CATEGORY_COLORS[category.id] }} />
         <LegendItem label="Vendida" className="bg-white/15" />
         <LegendItem label="Escolhida" className="bg-boca-gold" />
       </ul>

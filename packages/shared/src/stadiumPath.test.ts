@@ -3,7 +3,7 @@
  * Cada `it(...)` é uma afirmação que deve ser verdadeira; `expect(x).toBe(y)` confere o resultado.
  */
 import { describe, expect, it } from 'vitest';
-import { STAND_PATH, TIER_PROFILES } from '@/config/stadium';
+import { STAND_PATH, TIER_PROFILES } from './stadium';
 import { pathLength, samplePath, tierHeight, tierOffset, tierPoint } from './stadiumPath';
 
 describe('samplePath (caminho em U)', () => {

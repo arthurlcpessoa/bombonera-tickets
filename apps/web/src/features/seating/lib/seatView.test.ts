@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PITCH, SEAT_VIEW } from '@/config/stadium';
+import { SEAT_VIEW } from '@/config/stadium';
+import { PITCH } from '@bombonera/shared';
 import {
   ceilingRay,
   classifyCover,

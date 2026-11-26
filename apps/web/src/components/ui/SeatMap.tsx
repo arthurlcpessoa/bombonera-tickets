@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { getCategory, type Sector } from '@/features/seating/data/sectors';
-import { getSectorSeats, seatsByRow, type Seat } from '@/features/seating/lib/seatLayout';
+import { getCategory, getSectorSeats, type Seat, seatsByRow, type Sector } from '@bombonera/shared';
+import { CATEGORY_COLORS } from '@/config/colors';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
@@ -36,7 +36,7 @@ export function SeatMap({ sector }: SeatMapProps) {
   const byId = useMemo(() => new Map(seats.map((s) => [s.id, s])), [seats]);
   const selectedIds = useSeatStore((s) => s.selectedSeatIds);
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const color = getCategory(sector.categoryId).color;
+  const color = CATEGORY_COLORS[sector.categoryId];
 
   // "Tabindex itinerante": só UMA cadeira entra na ordem do Tab (as outras têm tabIndex −1).
   // Quem usa teclado entra no mapa com um Tab e anda com as setas, em vez de apertar Tab 2 mil vezes.

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { findSeat } from '@/features/seating/data/seats';
-import { getCategory, isAwaySector } from '@/features/seating/data/sectors';
+import { findSeat, getCategory, isAwaySector } from '@bombonera/shared';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import { useSeatStore, type HoverSource } from '@/store/useSeatStore';
 import { useStandsStore } from '@/store/useStandsStore';

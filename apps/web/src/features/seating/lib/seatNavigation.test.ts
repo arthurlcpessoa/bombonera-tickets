@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { getSector } from '@/features/seating/data/sectors';
-import { DEFAULT_STANDS_MODEL } from '@/features/seating/data/standsModel';
-import { getSectorSeats, seatsByRow, type Seat } from './seatLayout';
+import {
+  DEFAULT_STANDS_MODEL,
+  getSector,
+  getSectorSeats,
+  type Seat,
+  seatsByRow,
+} from '@bombonera/shared';
 import { nearestByA, neighborSeat } from './seatNavigation';
 
 /** Cadeira de mentira: só o que a navegação usa. */

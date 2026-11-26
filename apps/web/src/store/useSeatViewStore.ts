@@ -1,7 +1,6 @@
 import { create } from 'zustand';
+import { findSeat, getSectorSeats } from '@bombonera/shared';
 import { SEAT_VIEW } from '@/config/stadium';
-import { findSeat } from '@/features/seating/data/seats';
-import { getSectorSeats } from '@/features/seating/lib/seatLayout';
 import { neighborSeat, type SeatDirection } from '@/features/seating/lib/seatNavigation';
 import { useSeatStore } from './useSeatStore';
 import { useSelectionStore } from './useSelectionStore';

@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ORDER_RULES, SEAT_HUD_LAYOUT } from '@/config/stadium';
-import { findSeat } from '@/features/seating/data/seats';
-import { getCategory, isAwaySector } from '@/features/seating/data/sectors';
-import { getSectorSeats } from '@/features/seating/lib/seatLayout';
+import { SEAT_HUD_LAYOUT } from '@/config/stadium';
 import { neighborSeat, type SeatDirection } from '@/features/seating/lib/seatNavigation';
 import { formatPrice } from '@/features/seating/lib/pricing';
+import {
+  findSeat,
+  getCategory,
+  getSectorSeats,
+  isAwaySector,
+  ORDER_RULES,
+} from '@bombonera/shared';
+import { CATEGORY_COLORS } from '@/config/colors';
 import {
   classifyCover,
   classifyVisibility,
@@ -167,7 +172,7 @@ function Hud({ seatId }: { seatId: string }) {
               <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-white/60 uppercase">
                 <span
                   className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: category.color }}
+                  style={{ backgroundColor: CATEGORY_COLORS[category.id] }}
                   aria-hidden
                 />
                 <span className="truncate">{sector.name}</span>
@@ -236,7 +241,7 @@ function Hud({ seatId }: { seatId: string }) {
           <p className="flex flex-wrap items-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase">
             <span
               className="size-2.5 rounded-full"
-              style={{ backgroundColor: category.color }}
+              style={{ backgroundColor: CATEGORY_COLORS[category.id] }}
               aria-hidden
             />
             {sector.name}

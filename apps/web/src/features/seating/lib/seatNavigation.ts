@@ -1,3 +1,4 @@
+import { type Seat, seatsByRow } from '@bombonera/shared';
 /**
  * Navegação entre cadeiras vizinhas na visão do assento (TypeScript puro, sem React).
  *
@@ -12,7 +13,6 @@
  * (A cadeira 1 fica à esquerda do torcedor: veja lib/seatLayout.ts.)
  * Nunca sai do setor: na ponta da fila, na fila 1 ou na última fila, devolve null.
  */
-import { seatsByRow, type Seat } from './seatLayout';
 
 export type SeatDirection = 'left' | 'right' | 'front' | 'back';
 

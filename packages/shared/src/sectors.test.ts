@@ -24,8 +24,12 @@ describe('setor visitante', () => {
 });
 
 describe('PRICE_CATEGORIES', () => {
-  it('cada faixa tem uma cor diferente', () => {
-    const colors = PRICE_CATEGORIES.map((c) => c.color.toLowerCase());
-    expect(new Set(colors).size).toBe(colors.length);
+  it('cada faixa tem um id único e preço inteiro positivo', () => {
+    const ids = PRICE_CATEGORIES.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const c of PRICE_CATEGORIES) {
+      expect(Number.isInteger(c.price)).toBe(true);
+      expect(c.price).toBeGreaterThan(0);
+    }
   });
 });
