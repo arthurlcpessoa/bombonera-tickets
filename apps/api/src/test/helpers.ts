@@ -29,10 +29,16 @@ export function fakeClock(start = new Date('2026-12-01T12:00:00Z')) {
   };
 }
 
-export async function testApp() {
+export async function testApp(env: Record<string, string> = {}) {
   const clock = fakeClock();
   const store = new InMemoryStore({ inventory: testInventory(), now: clock.now });
-  const config = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+  // Nos testes, o limite de reservas por minuto fica alto (o teste de concorrência faz 20 de uma vez).
+  const config = loadConfig({
+    NODE_ENV: 'test',
+    LOG_LEVEL: 'silent',
+    RATE_LIMIT_HOLDS_MAX: '1000',
+    ...env,
+  });
   const app = await buildApp({ store, storeName: 'memory', now: clock.now, config });
   return { app, store, clock };
 }

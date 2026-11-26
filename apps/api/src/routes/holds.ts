@@ -27,42 +27,50 @@ import type { HoldRecord, TicketingStore } from '../store/TicketingStore';
 
 const HoldParams = z.object({ id: IdParamSchema });
 
-export const holdRoutes: FastifyPluginAsync<AppDeps> = async (app, { store, now }) => {
+export const holdRoutes: FastifyPluginAsync<AppDeps> = async (app, { store, now, config }) => {
   /** POST /api/holds { matchId, seatIds } → reserva por 10 minutos. 409 se alguma já não estiver livre. */
-  app.post('/holds', async (request, reply): Promise<CreateHoldResponse> => {
-    const { matchId, seatIds } = CreateHoldRequestSchema.parse(request.body);
-    if (!(await store.getMatch(matchId))) {
-      throw new ApiError(404, API_ERROR_CODES.notFound, 'Jogo não encontrado');
-    }
+  // Criar reserva tem um limite próprio, bem menor que o geral: sem ele, um robô poderia reservar
+  // o estádio inteiro de 6 em 6 cadeiras e travar as vendas.
+  const createLimit = { rateLimit: { max: config.RATE_LIMIT_HOLDS_MAX, timeWindow: '1 minute' } };
 
-    const token = createHoldToken();
-    const result = await store.createHold({
-      matchId,
-      seatIds,
-      tokenHash: hashToken(token),
-      expiresAt: holdExpiresAt(now()),
-    });
+  app.post(
+    '/holds',
+    { config: createLimit },
+    async (request, reply): Promise<CreateHoldResponse> => {
+      const { matchId, seatIds } = CreateHoldRequestSchema.parse(request.body);
+      if (!(await store.getMatch(matchId))) {
+        throw new ApiError(404, API_ERROR_CODES.notFound, 'Jogo não encontrado');
+      }
 
-    if (!result.ok && result.reason === 'unavailable') {
-      throw new ApiError(
-        409,
-        API_ERROR_CODES.holdConflict,
-        result.unavailable.length === 1
-          ? 'Uma das cadeiras acabou de ser reservada ou vendida.'
-          : 'Algumas cadeiras acabaram de ser reservadas ou vendidas.',
-        { unavailable: result.unavailable },
-      );
-    }
-    if (!result.ok) {
-      throw new ApiError(400, API_ERROR_CODES.unknownSeats, 'Cadeira inexistente neste jogo.', {
-        unknown: result.unknown,
+      const token = createHoldToken();
+      const result = await store.createHold({
+        matchId,
+        seatIds,
+        tokenHash: hashToken(token),
+        expiresAt: holdExpiresAt(now()),
       });
-    }
 
-    reply.status(201); // 201 = "criado"
-    // O preço e o total vêm do SERVIDOR (do inventário), nunca do navegador.
-    return { ...toHoldResponse(result.hold, now()), token };
-  });
+      if (!result.ok && result.reason === 'unavailable') {
+        throw new ApiError(
+          409,
+          API_ERROR_CODES.holdConflict,
+          result.unavailable.length === 1
+            ? 'Uma das cadeiras acabou de ser reservada ou vendida.'
+            : 'Algumas cadeiras acabaram de ser reservadas ou vendidas.',
+          { unavailable: result.unavailable },
+        );
+      }
+      if (!result.ok) {
+        throw new ApiError(400, API_ERROR_CODES.unknownSeats, 'Cadeira inexistente neste jogo.', {
+          unknown: result.unknown,
+        });
+      }
+
+      reply.status(201); // 201 = "criado"
+      // O preço e o total vêm do SERVIDOR (do inventário), nunca do navegador.
+      return { ...toHoldResponse(result.hold, now()), token };
+    },
+  );
 
   /** GET /api/holds/:id (com o token): estado atual da reserva. */
   app.get('/holds/:id', async (request): Promise<HoldResponse> => {

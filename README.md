@@ -13,7 +13,7 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 | 2    | Setores interativos (hover, preço, câmera voando até o setor) | ✅ Concluída |
 | 3    | Cadeiras geradas por código (InstancedMesh) e seleção         | ✅ Concluída |
 | 4    | Visão do assento em primeira pessoa                           | ✅ Concluída |
-| 5    | Back-end: API, banco, reserva temporária, checkout (sandbox)  | ⏳ Próxima   |
+| 5    | Back-end: API, reserva temporária, checkout (sandbox), banco  | 🚧 5A pronta |
 | 6    | Acabamento: mobile, desempenho, deploy                        | —            |
 
 ## Stack
@@ -21,12 +21,14 @@ O torcedor navega pelo estádio em 3D, escolhe setor e cadeira e vê **exatament
 - **TypeScript** em todo o projeto
 - **React 19 + Vite**: interface e build
 - **Three.js + React Three Fiber + drei**: renderização 3D
-- **Zustand**: estado global (visão ativa, setor e cadeiras escolhidas, visão do assento)
+- **Zustand**: estado global (visão ativa, setor e cadeiras escolhidas, visão do assento, reserva)
+- **Fastify + Zod**: API de ingressos (`apps/api`), com validação compartilhada com o site
+- **TanStack Query**: busca e cache da disponibilidade no site
 - **Tailwind CSS 4**: estilo da interface sobre o canvas
 - **glTF Transform + meshoptimizer + sharp**: pipeline de otimização do modelo 3D
 - **three-mesh-bvh**: raycasting rápido (script de medição e bloqueio do ponteiro pelo estádio)
 - **leva**: painel de calibração do modo `?debug` (carregado sob demanda)
-- **Vitest**: testes automatizados das funções puras
+- **Vitest**: testes automatizados (funções puras, suíte de contrato e API com `app.inject()`)
 - **oxlint + Prettier**: qualidade e formatação de código
 
 ## Como rodar
@@ -38,16 +40,29 @@ npm install
 npm run dev
 ```
 
+`npm run dev` sobe a **API** (<http://localhost:3000>) e o **site** (<http://localhost:5173>) juntos.
 Abra <http://localhost:5173>. Para o painel de calibração dos setores, abra <http://localhost:5173/?debug>.
+
+As configurações têm valores padrão e funcionam sem nada. Para mudar alguma, copie os modelos
+(no PowerShell):
+
+```powershell
+Copy-Item apps/api/.env.example apps/api/.env
+Copy-Item apps/web/.env.example apps/web/.env
+```
+
+> Nesta fase a API guarda reservas **na memória**: elas somem ao reiniciar a API (o banco entra na Fase 5C).
 
 | Script                     | O que faz                                                   |
 | -------------------------- | ----------------------------------------------------------- |
-| `npm run dev`              | Servidor de desenvolvimento com recarregamento automático   |
-| `npm run build`            | Checagem de tipos + build de produção em `apps/web/dist`    |
+| `npm run dev`              | API + site com recarregamento automático                    |
+| `npm run dev:api`          | Só a API (porta 3000)                                       |
+| `npm run dev:web`          | Só o site (porta 5173)                                      |
+| `npm run build`            | Build de produção de todos os workspaces (site e API)       |
 | `npm run preview`          | Serve o build de produção localmente                        |
-| `npm run lint`             | Lint com oxlint                                             |
-| `npm run typecheck`        | Checagem de tipos do TypeScript                             |
-| `npm test`                 | Testes automatizados (Vitest) das funções de geometria      |
+| `npm run lint`             | Lint com oxlint (todos os workspaces)                       |
+| `npm run typecheck`        | Checagem de tipos do TypeScript (todos os workspaces)       |
+| `npm test`                 | Testes automatizados (Vitest) de todos os workspaces        |
 | `npm run format`           | Formata todo o código com Prettier                          |
 | `npm run model:optimize`   | Regera `bombonera.glb` a partir do modelo bruto (veja docs) |
 | `npm run stands:probe`     | Mede o modelo 3D (perfis das arquibancadas; veja docs)      |
@@ -72,6 +87,9 @@ Formatação e correções de lint rodam ao salvar. Em **Run and Debug**, use _"
    olhos: olhe em volta (arrastar), use o binóculo (scroll ou pinça), compare as vizinhas pelas setas e
    veja distância, altura, ângulo do campo e quanto dele fica escondido por alguma estrutura (calculado
    com raios). O link `?assento=...` abre direto naquela cadeira.
+5. **Disponibilidade e reserva:** a API diz o estado real de cada cadeira (livre, reservada ou vendida).
+   "Continuar" reserva as cadeiras por 10 minutos, com cronômetro; ninguém mais consegue pegá-las,
+   nem se duas pessoas clicarem no mesmo milissegundo. A reserva sobrevive a recarregar a página.
 
 Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
@@ -80,16 +98,27 @@ Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 ```
 bombonera-tickets/
 ├── apps/
+│   ├── api/                     # API (Fastify): disponibilidade e reservas
+│   │   └── src/
+│   │       ├── routes/          # Endpoints /api/... (validação Zod)
+│   │       ├── store/           # TicketingStore (interface), InMemoryStore, suíte de contrato
+│   │       ├── domain/          # Regras puras (reserva, jogo)
+│   │       └── jobs/            # Limpeza das reservas vencidas
 │   └── web/                     # Front-end (React + Three.js)
 │       ├── public/models/       # bombonera.glb otimizado (6,8 MB)
 │       └── src/
 │           ├── components/ui/   # Interface HTML sobre o 3D (header, legenda, tooltip, painel)
-│           ├── config/          # Constantes do estádio (caminho em U, perfis, câmera)
+│           ├── config/          # Constantes visuais (câmera, painel, cores)
+│           ├── lib/             # Cliente HTTP da API e buscas (TanStack Query)
 │           ├── features/
 │           │   ├── stadium/     # Cena 3D: canvas, modelo, câmera, ambiente
-│           │   ├── seating/     # Setores: geometria (lib), dados (data) e malhas 3D (components)
+│           │   ├── seating/     # Setores e cadeiras: malhas 3D, mini-mapa, visão do assento
+│           │   ├── availability/# Disponibilidade vinda da API
+│           │   ├── checkout/    # Reserva: Continuar, cronômetro, restaurar
 │           │   └── debug/       # Painel de calibração (só com ?debug)
 │           └── store/           # Estado global (Zustand)
+├── packages/
+│   └── shared/                  # @bombonera/shared: geometria, cadeiras, setores, schemas da API
 ├── assets-src/                  # Modelo bruto do Sketchfab (fora do Git)
 ├── docs/                        # Arquitetura, pipeline do modelo 3D e prompts das fases
 └── scripts/                     # optimize-model.mjs, probe-stands.mjs
