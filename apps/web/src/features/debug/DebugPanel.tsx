@@ -7,8 +7,7 @@
  */
 import { button, folder, Leva, useControls } from 'leva';
 import { useEffect } from 'react';
-import { DEFAULT_STANDS_MODEL } from '@/features/seating/data/standsModel';
-import type { CurvedTier, TierProfile } from '@/features/seating/lib/stadiumPath';
+import { type CurvedTier, DEFAULT_STANDS_MODEL, type TierProfile } from '@bombonera/shared';
 import { useStandsStore } from '@/store/useStandsStore';
 
 const defaults = DEFAULT_STANDS_MODEL;

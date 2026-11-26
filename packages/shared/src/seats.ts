@@ -1,10 +1,10 @@
 /**
- * Consultas de cadeiras por id. Fica fora de lib/seatLayout.ts porque precisa da lista de
+ * Consultas de cadeiras por id. Fica fora de seatLayout.ts porque precisa da lista de
  * setores (sectors.ts), que por sua vez usa o gerador de cadeiras: juntar os dois num arquivo
  * criaria uma importação circular (um módulo esperando o outro terminar de carregar).
  */
-import { getSectorSeats, parseSeatId, type Seat } from '@/features/seating/lib/seatLayout';
-import type { StandsModel } from '@/features/seating/lib/sectorGeometry';
+import { getSectorSeats, parseSeatId, type Seat } from './seatLayout';
+import type { StandsModel } from './sectorGeometry';
 import { getSector, type Sector } from './sectors';
 
 /** Índice "id → posição na lista" de cada lista de cadeiras (a posição é o instanceId no 3D). */

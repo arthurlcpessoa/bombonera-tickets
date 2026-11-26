@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { findSeat } from '@/features/seating/data/seats';
-import { getCategory, isAwaySector } from '@/features/seating/data/sectors';
-import { formatPrice } from '@/features/seating/lib/pricing';
+import { findSeat, getCategory, isAwaySector } from '@bombonera/shared';
+import { formatPrice, unavailableSeatLabel } from '@/features/seating/lib/pricing';
+import { seatAvailability, useAvailabilityStore } from '@/store/useAvailabilityStore';
 import { useSeatStore, type HoverSource } from '@/store/useSeatStore';
 import { useStandsStore } from '@/store/useStandsStore';
 import { AwayBadge } from './AwayBadge';
@@ -41,22 +41,28 @@ export function SeatTooltip() {
         return;
       }
       const { seat, sector } = found;
-      const sold = seat.status === 'sold';
+      const unavailable = unavailableSeatLabel(seatAvailability(seat.id));
       const selected = state.selectedSeatIds.includes(seat.id);
       title.current.textContent = `Fila ${seat.row} · Cadeira ${seat.number}`;
       subtitle.current.textContent = sector.name + (selected ? ' · escolhida' : '');
       away.current.hidden = !isAwaySector(sector);
-      price.current.textContent = sold
-        ? 'Vendida'
-        : formatPrice(getCategory(sector.categoryId).price);
-      price.current.className = sold
+      price.current.textContent = unavailable ?? formatPrice(getCategory(sector.categoryId).price);
+      price.current.className = unavailable
         ? 'mt-1 font-semibold text-white/50'
         : 'text-boca-gold mt-1 font-semibold';
       el.hidden = false;
       placeNearPointer(el);
     };
     render(useSeatStore.getState());
-    return useSeatStore.subscribe(render);
+    const unsubscribeSeats = useSeatStore.subscribe(render);
+    // Se a cadeira sob o mouse mudar de estado na API, o texto acompanha.
+    const unsubscribeAvailability = useAvailabilityStore.subscribe(() =>
+      render(useSeatStore.getState()),
+    );
+    return () => {
+      unsubscribeSeats();
+      unsubscribeAvailability();
+    };
   }, []);
 
   return (

@@ -3,10 +3,17 @@
  * O gerador é uma função pura: basta chamá-la e conferir o resultado, sem navegador nem 3D.
  */
 import { describe, expect, it } from 'vitest';
-import { SEAT_LAYOUT } from '@/config/stadium';
-import { SECTORS, TIER_LABELS, type Sector } from '@/features/seating/data/sectors';
-import { DEFAULT_STANDS_MODEL } from '@/features/seating/data/standsModel';
-import { generateSeats, getSectorSeats, parseSeatId, seatId, seatsByRow } from './seatLayout';
+import { SEAT_LAYOUT } from './stadium';
+import { SECTORS, TIER_LABELS, type Sector } from './sectors';
+import { DEFAULT_STANDS_MODEL } from './standsModel';
+import {
+  generateSeats,
+  getSectorSeats,
+  parseSeatId,
+  seatId,
+  seatsByRow,
+  simulatedSoldSeatIds,
+} from './seatLayout';
 import { sectorSurface } from './sectorGeometry';
 import { hasHeadroom, samplePath, tierHeight } from './stadiumPath';
 
@@ -143,13 +150,20 @@ describe('generateSeats', () => {
     }
   });
 
-  it('é determinístico: mesma semente → mesmo status', () => {
+  it('simulação determinística: mesma semente → mesmas vendidas, e só cadeiras do setor', () => {
     const sector = SECTORS[5];
-    const first = generateSeats(sector, model).map((s) => s.status);
-    const second = generateSeats(sector, model).map((s) => s.status);
+    const first = [...simulatedSoldSeatIds(sector, model)];
+    const second = [...simulatedSoldSeatIds(sector, model)];
     expect(second).toEqual(first);
-    expect(first).toContain('sold');
-    expect(first).toContain('available');
+    const ids = new Set(seatsOf(sector).map((s) => s.id));
+    expect(first.length).toBeGreaterThan(0);
+    expect(first.length).toBeLessThan(ids.size); // há vendidas e livres
+    for (const id of first) expect(ids.has(id)).toBe(true);
+  });
+
+  it('o gerador é determinístico: mesmo setor → mesmas cadeiras', () => {
+    const sector = SECTORS[5];
+    expect(generateSeats(sector, model)).toEqual(generateSeats(sector, model));
   });
 
   it('nas curvas, as filas de cima têm pelo menos tantas cadeiras quanto as de baixo', () => {
@@ -168,12 +182,8 @@ describe('generateSeats', () => {
     }
   });
 
-  it('capacidade e lugares livres do setor = contagem das cadeiras', () => {
-    for (const sector of SECTORS) {
-      const seats = seatsOf(sector);
-      expect(sector.capacity).toBe(seats.length);
-      expect(sector.available).toBe(seats.filter((s) => s.status === 'available').length);
-    }
+  it('capacidade do setor = contagem das cadeiras', () => {
+    for (const sector of SECTORS) expect(sector.capacity).toBe(seatsOf(sector).length);
   });
 });
 

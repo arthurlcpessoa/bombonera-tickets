@@ -12,16 +12,17 @@
  *
  * SENTIDO DA NUMERAÇÃO: a cadeira 1 fica na ponta de a = 0 e os números crescem com `a`.
  * Os setores são definidos para que `a` crescente vá para a DIREITA de quem está sentado
- * olhando o campo (veja os palcos em data/sectors.ts). Ou seja: em toda a Bombonera, a cadeira 1
+ * olhando o campo (veja os palcos em sectors.ts). Ou seja: em toda a Bombonera, a cadeira 1
  * fica à esquerda do torcedor. Quem olha a partir do campo vê a cadeira 1 à direita.
  */
-import { SEAT_LAYOUT, SECTOR_LAYOUT } from '@/config/stadium';
-import type { Sector } from '@/features/seating/data/sectors';
+import { SEAT_LAYOUT, SECTOR_LAYOUT } from './stadium';
+import type { Sector } from './sectors';
 import { createRandom } from './random';
 import { sectorDepth, sectorSurface, type StandsModel, type Surface } from './sectorGeometry';
 import { hasHeadroom, type Point3 } from './stadiumPath';
 
-export type SeatStatus = 'available' | 'sold';
+/** Status da simulação (usada só para o estado inicial da API; veja simulatedSoldSeatIds). */
+type SimulatedStatus = 'available' | 'sold';
 
 export interface Seat {
   /** Estável e legível, ex.: "upper-3:F12-C07" (setor : fila 12 - cadeira 7). */
@@ -40,7 +41,6 @@ export interface Seat {
   yaw: number;
   /** Ponto dos olhos de quem está sentado (para a visão do assento, na Fase 4). */
   eye: Point3;
-  status: SeatStatus;
 }
 
 /** O que o gerador precisa saber do setor. */
@@ -125,7 +125,7 @@ function facingAt(surface: Surface, a: number, b: number): [x: number, z: number
 }
 
 // ---------------------------------------------------------------------------------------------
-// Status simulado
+// Disponibilidade simulada (só para o estado inicial da API)
 // ---------------------------------------------------------------------------------------------
 
 /** Semente geral da simulação (1905: ano de fundação do Boca). */
@@ -160,11 +160,11 @@ function sectorSoldShare(random: () => number): number {
  * Status de uma fila, em grupos: como na vida real, ingressos são comprados por famílias e
  * amigos, então andamos pela fila em blocos de 2 a 6 cadeiras e "sorteamos" cada bloco inteiro.
  */
-function rowStatuses(count: number, soldChance: number, random: () => number): SeatStatus[] {
-  const statuses: SeatStatus[] = [];
+function rowStatuses(count: number, soldChance: number, random: () => number): SimulatedStatus[] {
+  const statuses: SimulatedStatus[] = [];
   while (statuses.length < count) {
     const size = GROUP_MIN + Math.floor(random() * (GROUP_MAX - GROUP_MIN + 1));
-    const status: SeatStatus = random() < soldChance ? 'sold' : 'available';
+    const status: SimulatedStatus = random() < soldChance ? 'sold' : 'available';
     for (let i = 0; i < size && statuses.length < count; i++) statuses.push(status);
   }
   return statuses;
@@ -179,16 +179,12 @@ function rowStatuses(count: number, soldChance: number, random: () => number): S
  * Função pura: mesmo setor + mesmo modelo → sempre o mesmo resultado.
  */
 export function generateSeats(sector: SeatSource, model: StandsModel): Seat[] {
-  const { rowDepth } = SECTOR_LAYOUT;
   const { rowSampleSpacing, eyeHeight, eyeBack } = SEAT_LAYOUT;
   const kind = sector.shape.kind;
   const pitch = SEAT_LAYOUT.pitch[kind];
   const rowEndMargin = SEAT_LAYOUT.rowEndMargin[kind];
   const surface = sectorSurface(sector.shape, model);
-  const rows = Math.max(1, Math.floor(sectorDepth(sector.shape, model) / rowDepth));
-
-  const random = createRandom(sectorSeed(sector.id));
-  const soldShare = sectorSoldShare(random);
+  const rows = rowCount(sector, model);
 
   const seats: Seat[] = [];
   for (let row = 1; row <= rows; row++) {
@@ -205,11 +201,6 @@ export function generateSeats(sector: SeatSource, model: StandsModel): Seat[] {
       if (seatHasHeadroom(sector.shape, model, row, a)) places.push(a);
     }
 
-    // Filas da frente vendem mais: chance entre (1 + bias/2) e (1 − bias/2) vezes a média.
-    const depthShare = rows > 1 ? (row - 1) / (rows - 1) : 0.5;
-    const soldChance = Math.min(1, soldShare * (1 + FRONT_ROW_BIAS * (0.5 - depthShare)));
-    const statuses = rowStatuses(places.length, soldChance, random);
-
     for (const [i, a] of places.entries()) {
       const position = surface(a, b);
       const [fx, fz] = facingAt(surface, a, b);
@@ -224,11 +215,15 @@ export function generateSeats(sector: SeatSource, model: StandsModel): Seat[] {
         // Girar yaw em torno de Y leva o "para frente" da cadeira (+Z) até (sen yaw, cos yaw).
         yaw: Math.atan2(fx, fz),
         eye: [position[0] - fx * eyeBack, position[1] + eyeHeight, position[2] - fz * eyeBack],
-        status: statuses[i],
       });
     }
   }
   return seats;
+}
+
+/** Quantas filas o setor tem: a profundidade dividida pela profundidade de uma fila. */
+function rowCount(sector: SeatSource, model: StandsModel): number {
+  return Math.max(1, Math.floor(sectorDepth(sector.shape, model) / SECTOR_LAYOUT.rowDepth));
 }
 
 /** A cadeira (fila `row`, posição `a` no setor) tem folga acima da cabeça? Palcos: sempre. */
@@ -259,11 +254,28 @@ export function getSectorSeats(sector: SeatSource, model: StandsModel): Seat[] {
   return seats;
 }
 
-/** Capacidade e lugares livres, contados nas próprias cadeiras. */
-export function countSeats(seats: readonly Seat[]): { capacity: number; available: number } {
-  let available = 0;
-  for (const seat of seats) if (seat.status === 'available') available++;
-  return { capacity: seats.length, available };
+/**
+ * Cadeiras que a simulação marca como vendidas (mesma semente → sempre as mesmas).
+ *
+ * Desde a Fase 5 quem diz o estado de cada cadeira é a API. Ela usa isto só para o estado INICIAL
+ * do jogo, para o site continuar com a mesma "cara" de antes. A sequência de sorteios é a mesma da
+ * Fase 3 (uma fila de cada vez, da frente para trás), então as vendidas são exatamente as mesmas.
+ */
+export function simulatedSoldSeatIds(sector: SeatSource, model: StandsModel): Set<string> {
+  const rows = rowCount(sector, model);
+  const byRow = seatsByRow(getSectorSeats(sector, model));
+  const random = createRandom(sectorSeed(sector.id));
+  const soldShare = sectorSoldShare(random);
+  const sold = new Set<string>();
+  for (let row = 1; row <= rows; row++) {
+    const seats = byRow[row - 1] ?? [];
+    // Filas da frente vendem mais: chance entre (1 + bias/2) e (1 − bias/2) vezes a média.
+    const depthShare = rows > 1 ? (row - 1) / (rows - 1) : 0.5;
+    const soldChance = Math.min(1, soldShare * (1 + FRONT_ROW_BIAS * (0.5 - depthShare)));
+    const statuses = rowStatuses(seats.length, soldChance, random);
+    seats.forEach((seat, i) => statuses[i] === 'sold' && sold.add(seat.id));
+  }
+  return sold;
 }
 
 /** Agrupa as cadeiras por fila (índice 0 = fila 1), mantendo a ordem por número. */

@@ -1,11 +1,13 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@/features/seating/data/sectors';
+import { getCategory, getSector, isAwaySector, TIER_LABELS } from '@bombonera/shared';
+import { CATEGORY_COLORS, COLORS } from '@/config/colors';
 import {
   availabilityLevel,
   formatAvailability,
   formatPrice,
   type AvailabilityLevel,
 } from '@/features/seating/lib/pricing';
+import { useAvailabilityStore, useSectorAvailability } from '@/store/useAvailabilityStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useViewStore } from '@/store/useViewStore';
@@ -26,6 +28,9 @@ const AVAILABILITY_COLOR: Record<AvailabilityLevel, string> = {
 export function SectorPanel() {
   const selectedId = useSelectionStore((s) => s.selectedSectorId);
   const sector = selectedId ? getSector(selectedId) : undefined;
+  // Livres agora: vem da API (undefined enquanto carrega ou com a API fora do ar).
+  const live = useSectorAvailability(selectedId ?? '');
+  const offline = useAvailabilityStore((s) => s.apiStatus === 'offline');
   const closeButton = useRef<HTMLButtonElement>(null);
 
   const isOpen = sector !== undefined;
@@ -47,7 +52,8 @@ export function SectorPanel() {
 
   if (!sector) return null;
   const category = getCategory(sector.categoryId);
-  const level = availabilityLevel(sector.available, sector.capacity);
+  const capacity = live?.capacity ?? sector.capacity;
+  const level = live ? availabilityLevel(live.available, live.capacity) : null;
   const away = isAwaySector(sector);
 
   return (
@@ -62,7 +68,7 @@ export function SectorPanel() {
           <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase">
             <span
               className="size-2.5 rounded-full"
-              style={{ backgroundColor: category.color }}
+              style={{ backgroundColor: CATEGORY_COLORS[category.id] }}
               aria-hidden
             />
             {TIER_LABELS[sector.tier]}
@@ -97,12 +103,17 @@ export function SectorPanel() {
         </div>
         <div className="text-right">
           <dt className="sr-only">Disponibilidade</dt>
-          <dd className={`font-semibold ${AVAILABILITY_COLOR[level]}`}>
-            {formatAvailability(sector.available)}
+          <dd
+            className={`font-semibold ${level ? AVAILABILITY_COLOR[level] : 'text-white/60'}`}
+            aria-live="polite"
+          >
+            {live
+              ? formatAvailability(live.available)
+              : offline
+                ? 'Disponibilidade indisponível'
+                : 'Carregando…'}
           </dd>
-          <dd className="text-xs text-white/50">
-            de {sector.capacity.toLocaleString('pt-BR')} cadeiras
-          </dd>
+          <dd className="text-xs text-white/50">de {capacity.toLocaleString('pt-BR')} cadeiras</dd>
         </div>
       </dl>
 
@@ -121,7 +132,8 @@ export function SectorPanel() {
         className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/70"
         aria-label="Legenda"
       >
-        <LegendItem label="Livre" style={{ backgroundColor: category.color }} />
+        <LegendItem label="Livre" style={{ backgroundColor: CATEGORY_COLORS[category.id] }} />
+        <LegendItem label="Reservada" style={{ backgroundColor: COLORS.heldSeat }} />
         <LegendItem label="Vendida" className="bg-white/15" />
         <LegendItem label="Escolhida" className="bg-boca-gold" />
       </ul>

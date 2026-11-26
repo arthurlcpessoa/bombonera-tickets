@@ -16,8 +16,8 @@
  * A origem (0, 0, 0) é o ponto Seat.position (o piso da arquibancada).
  */
 import { BoxGeometry, type BufferGeometry } from 'three';
-import type { SectorShape } from './sectorGeometry';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { type SectorShape } from '@bombonera/shared';
 
 /** Medidas de uma cadeira (m). */
 interface ChairDimensions {

@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { getCategory, type Sector } from '@/features/seating/data/sectors';
-import { getSectorSeats, seatsByRow, type Seat } from '@/features/seating/lib/seatLayout';
-import { formatPrice } from '@/features/seating/lib/pricing';
+import { getCategory, getSectorSeats, type Seat, seatsByRow, type Sector } from '@bombonera/shared';
+import { CATEGORY_COLORS, COLORS } from '@/config/colors';
+import { formatPrice, unavailableSeatLabel } from '@/features/seating/lib/pricing';
+import {
+  availabilityInSector,
+  seatAvailability,
+  useAvailabilityStore,
+} from '@/store/useAvailabilityStore';
+import { isInMyHold, useHoldStore } from '@/store/useHoldStore';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';
@@ -36,12 +42,20 @@ export function SeatMap({ sector }: SeatMapProps) {
   const byId = useMemo(() => new Map(seats.map((s) => [s.id, s])), [seats]);
   const selectedIds = useSeatStore((s) => s.selectedSeatIds);
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const color = getCategory(sector.categoryId).color;
+  const color = CATEGORY_COLORS[sector.categoryId];
+  // Estado das cadeiras deste setor, vindo da API (re-renderiza só quando muda de verdade).
+  const seatSets = useAvailabilityStore((s) => s.seatSets.get(sector.id));
+  const myHold = useHoldStore((s) => s.hold);
+  const availabilityOf = (seat: Seat) => {
+    const availability = availabilityInSector(seatSets, seat.id);
+    // As cadeiras da MINHA reserva aparecem como "reservadas" na API, mas para mim são minhas.
+    return availability === 'held' && isInMyHold(seat.id, myHold) ? 'available' : availability;
+  };
 
   // "Tabindex itinerante": só UMA cadeira entra na ordem do Tab (as outras têm tabIndex −1).
   // Quem usa teclado entra no mapa com um Tab e anda com as setas, em vez de apertar Tab 2 mil vezes.
   const [focusId, setFocusId] = useState(
-    () => seats.find((s) => s.status === 'available')?.id ?? seats[0]?.id,
+    () => seats.find((s) => seatAvailability(s.id) === 'available')?.id ?? seats[0]?.id,
   );
   // A "cadeira em destaque" do mapa: a que tem o foco (do teclado ou do último clique).
   const focusedSeat = focusId ? byId.get(focusId) : undefined;
@@ -123,8 +137,10 @@ export function SeatMap({ sector }: SeatMapProps) {
   };
 
   const toggle = (seat: Seat) => {
-    if (seat.status === 'sold') return;
-    useSeatStore.getState().toggleSeat(seat.id);
+    const { selectedSeatIds, toggleSeat } = useSeatStore.getState();
+    // Desfazer a escolha sempre pode; escolher, só se estiver livre.
+    if (!selectedSeatIds.includes(seat.id) && seatAvailability(seat.id) !== 'available') return;
+    toggleSeat(seat.id);
   };
 
   const hover = (seat: Seat | null) => {
@@ -148,7 +164,18 @@ export function SeatMap({ sector }: SeatMapProps) {
             <div key={r} className="flex flex-row-reverse justify-center" style={{ gap: GAP }}>
               {row.map((seat) => {
                 const isSelected = selected.has(seat.id);
-                const sold = seat.status === 'sold';
+                const availability = availabilityOf(seat);
+                const blocked = availability !== 'available';
+                const state =
+                  availability === 'sold'
+                    ? 'vendida'
+                    : availability === 'held'
+                      ? 'reservada'
+                      : availability === 'unknown'
+                        ? 'disponibilidade desconhecida'
+                        : isSelected
+                          ? 'escolhida'
+                          : 'livre';
                 return (
                   <button
                     key={seat.id}
@@ -158,11 +185,9 @@ export function SeatMap({ sector }: SeatMapProps) {
                     }}
                     type="button"
                     tabIndex={seat.id === focusId ? 0 : -1}
-                    aria-label={`Fila ${seat.row}, cadeira ${seat.number}, ${
-                      sold ? 'vendida' : isSelected ? 'escolhida' : 'livre'
-                    }`}
-                    aria-pressed={sold ? undefined : isSelected}
-                    aria-disabled={sold || undefined}
+                    aria-label={`Fila ${seat.row}, cadeira ${seat.number}, ${state}`}
+                    aria-pressed={blocked ? undefined : isSelected}
+                    aria-disabled={blocked || undefined}
                     onClick={() => toggle(seat)}
                     onFocus={() => {
                       setFocusId(seat.id);
@@ -172,16 +197,25 @@ export function SeatMap({ sector }: SeatMapProps) {
                     onMouseEnter={() => hover(seat)}
                     onMouseLeave={() => hover(null)}
                     className={`shrink-0 rounded-[2px] data-hovered:ring-2 data-hovered:ring-white ${
-                      sold
+                      availability === 'sold'
                         ? 'cursor-not-allowed bg-white/15'
                         : isSelected
                           ? 'bg-boca-gold cursor-pointer'
-                          : 'cursor-pointer'
+                          : blocked
+                            ? 'cursor-not-allowed'
+                            : 'cursor-pointer'
                     }`}
                     style={{
                       width: cell,
                       height: cell,
-                      backgroundColor: !sold && !isSelected ? color : undefined,
+                      backgroundColor:
+                        availability === 'held'
+                          ? COLORS.heldSeat
+                          : availability !== 'sold' && !isSelected
+                            ? color
+                            : undefined,
+                      // Desconhecida (API fora do ar ou carregando): a cor da faixa, apagada.
+                      opacity: availability === 'unknown' && !isSelected ? 0.45 : undefined,
                     }}
                   />
                 );
@@ -227,7 +261,8 @@ const HINT = 'Passe o mouse ou use as setas';
 
 function describeSeat(seat: Seat, sector: Sector): string {
   const status =
-    seat.status === 'sold' ? 'Vendida' : formatPrice(getCategory(sector.categoryId).price);
+    unavailableSeatLabel(seatAvailability(seat.id)) ??
+    formatPrice(getCategory(sector.categoryId).price);
   return `Fila ${seat.row} · Cadeira ${seat.number} · ${status}`;
 }
 

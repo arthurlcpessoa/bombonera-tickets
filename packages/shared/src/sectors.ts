@@ -5,13 +5,13 @@
  * −Z, até 8, na ponta +Z), com um corredor entre blocos vizinhos. A divisão é simétrica:
  * o meio da lateral (t = 0,5) é sempre a fronteira entre os blocos 4 e 5.
  *
- * Capacidade e lugares livres NÃO são estimados: vêm da contagem das cadeiras geradas
- * (lib/seatLayout.ts). Assim o tooltip, o painel e o 3D mostram sempre o mesmo número.
+ * A capacidade NÃO é estimada: vem da contagem das cadeiras geradas (seatLayout.ts). Quantas estão
+ * livres, reservadas ou vendidas é a API que diz (Fase 5).
  */
-import { PALCOS_BLOCKS_Z, SECTOR_LAYOUT } from '@/config/stadium';
-import { countSeats, getSectorSeats } from '@/features/seating/lib/seatLayout';
-import type { SectorShape } from '@/features/seating/lib/sectorGeometry';
-import { pathLength, tierOffset, type CurvedTier } from '@/features/seating/lib/stadiumPath';
+import { PALCOS_BLOCKS_Z, SECTOR_LAYOUT } from './stadium';
+import { getSectorSeats } from './seatLayout';
+import type { SectorShape } from './sectorGeometry';
+import { pathLength, tierOffset, type CurvedTier } from './stadiumPath';
 import { DEFAULT_STANDS_MODEL } from './standsModel';
 
 /** Os quatro "andares" à venda: as três bandejas do U + a platea dos palcos. */
@@ -22,13 +22,12 @@ export type PriceCategoryId = 'superior' | 'visitante' | 'media' | 'inferior' | 
 /** De quem é o setor: da torcida da casa (o padrão) ou da torcida visitante. */
 export type Audience = 'home' | 'away';
 
-/** Faixa de preço: cada uma tem uma cor própria no 3D e na legenda. */
+/** Faixa de preço. A cor de cada faixa é visual e fica no site (config/colors.ts). */
 export interface PriceCategory {
   id: PriceCategoryId;
   label: string;
   /** Preço em pesos argentinos (ARS). */
   price: number;
-  color: string;
 }
 
 export interface Sector {
@@ -41,23 +40,20 @@ export interface Sector {
   /** Torcida do setor. Ausente = 'home' (casa). Use isAwaySector() para ler. */
   audience?: Audience;
   shape: SectorShape;
-  /** Capacidade = número de cadeiras geradas para o setor. */
+  /**
+   * Capacidade = número de cadeiras geradas para o setor (geometria: não muda). Quantas estão
+   * livres agora é a API que diz (GET /api/matches/:id/sectors).
+   */
   capacity: number;
-  /** Cadeiras livres (status simulado, veja lib/seatLayout.ts). */
-  available: number;
 }
 
 /** Faixas de preço, da mais barata para a mais cara. */
 export const PRICE_CATEGORIES: readonly PriceCategory[] = [
-  // Cores escolhidas pelo que fica EMBAIXO delas: as cadeiras do modelo são azuis (inferior e
-  // superior), amarelas (média) e bordô (palcos). Evitamos azul e amarelo (sumiriam) e usamos
-  // tons que continuam parecidos com a legenda depois de "misturados" com a cor de baixo.
-  { id: 'superior', label: 'Superior', price: 35_000, color: '#2dd4bf' },
-  // Verde-limão: a cor mais distante das outras quatro, pura e misturada ao azul das cadeiras.
-  { id: 'visitante', label: 'Visitante', price: 35_000, color: '#a3e635' },
-  { id: 'media', label: 'Média', price: 50_000, color: '#fb923c' },
-  { id: 'inferior', label: 'Inferior', price: 65_000, color: '#c084fc' },
-  { id: 'palcos', label: 'Palcos', price: 90_000, color: '#f472b6' },
+  { id: 'superior', label: 'Superior', price: 35_000 },
+  { id: 'visitante', label: 'Visitante', price: 35_000 },
+  { id: 'media', label: 'Média', price: 50_000 },
+  { id: 'inferior', label: 'Inferior', price: 65_000 },
+  { id: 'palcos', label: 'Palcos', price: 90_000 },
 ];
 
 const CATEGORY_BY_ID = new Map(PRICE_CATEGORIES.map((c) => [c.id, c]));
@@ -85,7 +81,7 @@ const BLOCKS_PER_TIER = 8;
 const T_START = 0.008;
 const T_END = 0.992;
 
-type SectorDraft = Omit<Sector, 'capacity' | 'available'>;
+type SectorDraft = Omit<Sector, 'capacity'>;
 
 function curvedSectors(): SectorDraft[] {
   const model = DEFAULT_STANDS_MODEL;
@@ -109,7 +105,7 @@ function curvedSectors(): SectorDraft[] {
   });
 }
 
-/** Palcos: um setor por bloco entre os corredores reais do modelo (config/stadium.ts). */
+/** Palcos: um setor por bloco entre os corredores reais do modelo (stadium.ts). */
 function palcosSectors(): SectorDraft[] {
   return PALCOS_BLOCKS_Z.map(([zFrom, zTo], i): SectorDraft => ({
     id: `palcos-${i + 1}`,
@@ -131,11 +127,11 @@ const SECTOR_OVERRIDES: Record<string, Partial<SectorDraft>> = {
   'upper-8': { name: 'Visitante', categoryId: 'visitante', audience: 'away' },
 };
 
-/** Monta a lista final: capacidade e lugares livres vêm da contagem real das cadeiras. */
+/** Monta a lista final: a capacidade vem da contagem real das cadeiras. */
 function buildSectors(): Sector[] {
   return [...curvedSectors(), ...palcosSectors()].map((generated) => {
     const draft = { ...generated, ...SECTOR_OVERRIDES[generated.id] };
-    return { ...draft, ...countSeats(getSectorSeats(draft, DEFAULT_STANDS_MODEL)) };
+    return { ...draft, capacity: getSectorSeats(draft, DEFAULT_STANDS_MODEL).length };
   });
 }
 

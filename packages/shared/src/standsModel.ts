@@ -1,9 +1,9 @@
-import { PALCOS_PLATEA, STAND_PATH, TIER_PROFILES } from '@/config/stadium';
-import type { StandsModel } from '@/features/seating/lib/sectorGeometry';
+import { PALCOS_PLATEA, STAND_PATH, TIER_PROFILES } from './stadium';
+import type { StandsModel } from './sectorGeometry';
 import { STAND_CALIBRATION } from './standCalibration';
 
 /**
- * Modelo das arquibancadas usado pelo site: a forma geométrica (config/stadium.ts)
+ * Modelo das arquibancadas usado pelo site: a forma geométrica (stadium.ts)
  * + a tabela de correção medida no .glb (standCalibration.ts, gerada por script).
  * No modo ?debug, uma cópia editável dele fica em useStandsStore.
  */

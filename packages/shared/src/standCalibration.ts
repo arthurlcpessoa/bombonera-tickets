@@ -2,11 +2,11 @@
  * ARQUIVO GERADO por `npm run stands:calibrate` (scripts/probe-stands.mjs). Não edite à mão.
  *
  * Correção, em metros, do offset de cada bandeja ao longo do U (201 amostras de t = 0 a 1),
- * medida no modelo 3D em relação a STAND_PATH e TIER_PROFILES (src/config/stadium.ts).
+ * medida no modelo 3D em relação a STAND_PATH e TIER_PROFILES (stadium.ts).
  * noHeadroom: trechos [fila, t0, t1] com menos de 0.3 m livres acima dos olhos
  * (1001 amostras ao longo do U). Cadeiras nesses trechos não são geradas.
  */
-import type { CurvedTier, TierCorrection } from '@/features/seating/lib/stadiumPath';
+import type { CurvedTier, TierCorrection } from './stadiumPath';
 
 export const STAND_CALIBRATION: Record<CurvedTier, TierCorrection> = {
   lower: {

@@ -32,3 +32,17 @@ export function formatAvailability(available: number): string {
   if (available === 1) return '1 lugar disponível';
   return `${count.format(available)} lugares disponíveis`;
 }
+
+/** Centavos → texto em pesos. A API trabalha em centavos inteiros; aqui só dividimos para mostrar. */
+export function formatCents(cents: number): string {
+  return currency.format(cents / 100);
+}
+
+/** Texto de uma cadeira que NÃO pode ser escolhida (null = pode, ou ainda não sabemos). */
+export function unavailableSeatLabel(
+  availability: 'available' | 'held' | 'sold' | 'unknown',
+): string | null {
+  if (availability === 'sold') return 'Vendida';
+  if (availability === 'held') return 'Reservada';
+  return null;
+}

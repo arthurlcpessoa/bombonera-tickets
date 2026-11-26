@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ORDER_RULES } from '@/config/stadium';
+import { ORDER_RULES } from '@bombonera/shared';
 
 /**
  * Cadeiras (Zustand). A seleção é do USUÁRIO, não do setor: dá para escolher cadeiras de setores

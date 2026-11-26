@@ -1,12 +1,17 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, InstancedMesh, MeshLambertMaterial, Object3D } from 'three';
-import { COLORS } from '@/config/colors';
-import { seatIndexMap } from '@/features/seating/data/seats';
-import { getCategory, getSector, type Sector } from '@/features/seating/data/sectors';
-import { getSectorSeats, type Seat } from '@/features/seating/lib/seatLayout';
+import {
+  getSector,
+  getSectorSeats,
+  type Seat,
+  seatIndexMap,
+  type Sector,
+  type StandsModel,
+} from '@bombonera/shared';
+import { CATEGORY_COLORS, COLORS } from '@/config/colors';
 import { createSeatMarkerGeometry } from '@/features/seating/lib/seatGeometry';
-import type { StandsModel } from '@/features/seating/lib/sectorGeometry';
+import { seatAvailability, useAvailabilityStore } from '@/store/useAvailabilityStore';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
@@ -52,28 +57,35 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
     [geometry, material],
   );
 
-  // Cores base: livre = cor da faixa de preço; vendida = cinza escuro.
+  // Cores base: livre = cor da faixa de preço; vendida = cinza escuro; reservada = cinza-claro.
   const palette = useMemo(() => {
-    const available = new Color(getCategory(sector.categoryId).color);
+    const available = new Color(CATEGORY_COLORS[sector.categoryId]);
     const sold = new Color(COLORS.soldSeat);
+    const held = new Color(COLORS.heldSeat);
     const gold = new Color(COLORS.gold);
     const white = new Color('#ffffff');
     return {
       available,
       availableHover: available.clone().lerp(white, COLORS.hoverLighten),
       sold,
+      held,
       selected: gold,
       selectedHover: gold.clone().lerp(white, COLORS.hoverLighten),
     };
   }, [sector.categoryId]);
 
-  /** Cor de uma cadeira a partir do estado atual dos stores. */
+  /**
+   * Cor de uma cadeira a partir do estado atual dos stores. A disponibilidade vem da API; enquanto
+   * ela não chega (ou se a API estiver fora do ar), a cadeira aparece com a cor da faixa.
+   */
   const colorOf = (seat: Seat): Color => {
     const { hoveredSeatId, selectedSeatIds } = useSeatStore.getState();
-    const hovered = hoveredSeatId === seat.id && seat.status === 'available';
+    const availability = seatAvailability(seat.id);
+    const hovered = hoveredSeatId === seat.id && availability === 'available';
     if (selectedSeatIds.includes(seat.id))
       return hovered ? palette.selectedHover : palette.selected;
-    if (seat.status === 'sold') return palette.sold;
+    if (availability === 'sold') return palette.sold;
+    if (availability === 'held') return palette.held;
     return hovered ? palette.availableHover : palette.available;
   };
 
@@ -131,6 +143,21 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [seats, indexById]);
 
+  // 3) Disponibilidade nova da API (a cada ~15 s): repinta o setor inteiro. São no máximo ~2.300
+  //    cadeiras, escritas direto na GPU, sem re-renderizar o React.
+  useEffect(
+    () =>
+      useAvailabilityStore.subscribe((state, prev) => {
+        const sets = state.seatSets.get(sector.id);
+        const mesh = meshRef.current;
+        if (sets === prev.seatSets.get(sector.id) || !mesh?.instanceColor) return;
+        seats.forEach((seat, i) => mesh.setColorAt(i, colorOf(seat)));
+        mesh.instanceColor.needsUpdate = true;
+      }),
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [seats, sector.id],
+  );
+
   // Ao sair (trocar de setor ou fechar), o hover de uma cadeira deste setor deixa de valer.
   useEffect(
     () => () => {
@@ -158,12 +185,16 @@ function SectorSeats({ sector, model }: SectorSeatsProps) {
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     const seat = seatAt(e);
-    if (!seat || isDragGesture(e) || seat.status === 'sold') return; // vendida não é clicável
-    useSeatStore.getState().toggleSeat(seat.id);
+    if (!seat || isDragGesture(e)) return;
+    const { selectedSeatIds, toggleSeat } = useSeatStore.getState();
+    // Desfazer a escolha sempre pode. Escolher, só cadeira LIVRE (vendida, reservada por outra
+    // pessoa ou de estado desconhecido, não).
+    if (!selectedSeatIds.includes(seat.id) && seatAvailability(seat.id) !== 'available') return;
+    toggleSeat(seat.id);
   };
 
   /**
-   * Duplo clique = ver a visão daquela cadeira (também das vendidas: dá para espiar).
+   * Duplo clique = ver a visão daquela cadeira (também das vendidas e reservadas: dá para espiar).
    * Os dois cliques do duplo clique também chegam em handleClick e se anulam (escolhe e desfaz).
    */
   const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {

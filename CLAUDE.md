@@ -13,21 +13,25 @@ O usuário navega pelo estádio em 3D, escolhe setor e cadeira e vê a visão ex
 
 ## Stack
 
-- Monorepo com npm workspaces. Front-end em `apps/web`; a API entrará em `apps/api` na Fase 5.
-- React 19 + Vite + TypeScript, Three.js + React Three Fiber + drei, Zustand e Tailwind CSS 4.
+- Monorepo com npm workspaces. Front-end em `apps/web`; API em `apps/api` (Fastify + Zod).
+- `packages/shared` (`@bombonera/shared`): código **puro** usado pelo site e pela API (geometria do
+  estádio, gerador de cadeiras, setores, preços, regras). Sem React, sem Three.js, sem alias `@/`.
+- React 19 + Vite + TypeScript, Three.js + React Three Fiber + drei, Zustand, TanStack Query e Tailwind CSS 4.
 - Lint: oxlint. Formatação: Prettier (aspas simples, ponto e vírgula, 100 colunas).
-- Alias de import: `@/` → `apps/web/src/`.
+- Alias de import: `@/` → `apps/web/src/` (só dentro do site; o shared usa caminhos relativos).
 
 ## Comandos (rodar na raiz)
 
 | Comando                    | Uso                                                                  |
 | -------------------------- | -------------------------------------------------------------------- |
-| `npm run dev`              | servidor em http://localhost:5173                                    |
-| `npm run typecheck`        | checagem de tipos                                                    |
-| `npm test`                 | testes (Vitest) das funções puras                                    |
-| `npm run lint`             | lint                                                                 |
+| `npm run dev`              | API (http://localhost:3000) + site (http://localhost:5173) juntos    |
+| `npm run dev:api`          | só a API                                                             |
+| `npm run dev:web`          | só o site                                                            |
+| `npm run typecheck`        | checagem de tipos (todos os workspaces)                              |
+| `npm test`                 | testes (Vitest) de todos os workspaces                               |
+| `npm run lint`             | lint (todos os workspaces)                                           |
 | `npm run format`           | formata tudo                                                         |
-| `npm run build`            | build de produção                                                    |
+| `npm run build`            | build de produção (todos os workspaces)                              |
 | `npm run model:optimize`   | regera o .glb (precisa de `assets-src/`)                             |
 | `npm run stands:probe`     | mede o modelo 3D (perfis; `-- check` mostra o erro dos setores)      |
 | `npm run stands:calibrate` | regera `standCalibration.ts` após mudar `STAND_PATH`/`TIER_PROFILES` |
@@ -39,8 +43,13 @@ Antes de cada commit, rode `npm test`, `npm run typecheck`, `npm run lint` e `np
 - Identificadores em inglês (`SectorOverlay`, `useSelectionStore`). Comentários, documentação e textos da UI em **português**.
 - Organização por _feature_: `src/features/<feature>/{components,data,lib}`. A UI HTML genérica fica em `src/components/ui`.
 - Interface HTML (fora do canvas) e cena 3D (dentro do `<Canvas>`) **só conversam via stores Zustand** em `src/store/`.
-- Constantes do estádio ficam em `src/config/stadium.ts`. Evite números mágicos espalhados.
-- Não versionar `assets-src/` (modelo bruto, pesado).
+- Medidas do estádio e regras da compra ficam em `packages/shared/src/stadium.ts`; constantes visuais
+  (câmera, painel, HUD, cores) em `apps/web/src/config/`. Evite números mágicos espalhados.
+- Não versionar `assets-src/` (modelo bruto, pesado) nem `.env` (só os `.env.example`).
+- API: as rotas só acessam dados pela interface `TicketingStore` (nunca o armazenamento direto); métodos
+  `async` e relógio injetável. Dinheiro sempre em **centavos inteiros**. Schemas Zod da API ficam em
+  `packages/shared/src/api.ts` e valem para os dois lados. Erros no formato `{ error: { code, message } }`.
+- Toda implementação da `TicketingStore` precisa passar na suíte de contrato (`describeStoreContract`).
 - Mensagens de commit em português, no imperativo, com corpo explicando o que mudou.
 
 ## Sistema de coordenadas do modelo
@@ -63,5 +72,8 @@ sobre o modelo, não partes do .glb.
 2. ✅ Setores interativos (veja `docs/prompts/fase-2.md` e `docs/ARQUITETURA.md`)
 3. ✅ Cadeiras com InstancedMesh e seleção (veja `docs/prompts/fase-3.md`)
 4. ✅ Visão do assento em primeira pessoa (veja `docs/prompts/fase-4.md`)
-5. Back-end (Fastify + Prisma + PostgreSQL), reserva temporária, checkout Mercado Pago sandbox
+5. Back-end (veja `docs/prompts/fase-5.md`):
+   - ✅ 5A: pacote compartilhado, API, disponibilidade real e reserva temporária (em memória)
+   - 5B: checkout, pagamento, pedidos, ingressos e tempo real (em memória)
+   - 5C: PostgreSQL + Prisma como implementação definitiva da `TicketingStore`
 6. Acabamento e deploy (Vercel + Railway/Render)

@@ -1,8 +1,8 @@
 import { useGLTF } from '@react-three/drei';
 import { useEffect } from 'react';
 import { Mesh, Raycaster, Vector3, type Material, type Object3D } from 'three';
+import { findSeat } from '@bombonera/shared';
 import { SEAT_VIEW, STADIUM_MODEL_URL } from '@/config/stadium';
-import { findSeat } from '@/features/seating/data/seats';
 import { ceilingRay, fieldSamplePoints, findCeiling } from '@/features/seating/lib/seatView';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';

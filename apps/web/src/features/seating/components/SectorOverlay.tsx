@@ -1,4 +1,5 @@
-import { getCategory, SECTORS } from '@/features/seating/data/sectors';
+import { SECTORS } from '@bombonera/shared';
+import { CATEGORY_COLORS } from '@/config/colors';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
 import { useStandsStore } from '@/store/useStandsStore';
@@ -45,7 +46,7 @@ export function SectorOverlay() {
             key={sector.id}
             sector={sector}
             model={model}
-            color={getCategory(sector.categoryId).color}
+            color={CATEGORY_COLORS[sector.categoryId]}
             state={stateOf(sector.id)}
             showSurface={showSectors}
           />

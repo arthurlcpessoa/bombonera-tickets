@@ -1,12 +1,9 @@
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useEffect, useRef, type ComponentRef } from 'react';
 import { Box3, MathUtils, PerspectiveCamera, Spherical, Vector3 } from 'three';
+import { findSeat, getSector, type Seat, sectorFrame } from '@bombonera/shared';
 import { CAMERA_LIMITS, SEAT_VIEW, SECTOR_CAMERA, SECTOR_PANEL_LAYOUT } from '@/config/stadium';
-import { findSeat } from '@/features/seating/data/seats';
-import { getSector } from '@/features/seating/data/sectors';
-import type { Seat } from '@/features/seating/lib/seatLayout';
 import { initialLookTarget, isWithinTurn, seatAzimuthRange } from '@/features/seating/lib/seatView';
-import { sectorFrame } from '@/features/seating/lib/sectorGeometry';
 import { DEFAULT_PRESET, getPreset, type CameraPresetId } from '@/features/stadium/cameraPresets';
 import { prefersReducedMotion } from '@/lib/motion';
 import { useSeatViewStore } from '@/store/useSeatViewStore';

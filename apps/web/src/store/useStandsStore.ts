@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_STANDS_MODEL } from '@/features/seating/data/standsModel';
-import type { StandsModel } from '@/features/seating/lib/sectorGeometry';
+import { DEFAULT_STANDS_MODEL, type StandsModel } from '@bombonera/shared';
 
 /**
  * Modelo das arquibancadas em uso (caminho em U, perfis, correção, palcos).
