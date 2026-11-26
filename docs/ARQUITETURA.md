@@ -90,7 +90,7 @@ A solução é a mesma de calibrar um instrumento: **modelo simples + tabela de 
    arquibancadas (como um agrimensor medindo o terreno). Usa um BVH (índice espacial) para ser rápido.
 2. Para 201 pontos ao longo do U, ele mede onde a rampa real de cada bandeja está e compara com o
    modelo. A diferença vira a tabela `seating/data/standCalibration.ts` (arquivo gerado).
-3. `tierPoint()` soma a correção ao offset. Erro final: ~1 cm em média, máximo ~30 cm.
+3. `tierPoint()` soma a correção ao offset. Erro final: ~4 cm em média, máximo ~55 cm.
 
 O script importa o **mesmo** `stadiumPath.ts` do site: o Node 26 executa TypeScript simples
 direto. Assim, a medição confere exatamente a matemática que vai para a tela.
@@ -98,12 +98,50 @@ direto. Assim, a medição confere exatamente a matemática que vai para a tela.
 ```bash
 npm run stands:probe              # perfis de altura (cabeceiras, lateral, cantos, palcos)
 npm run stands:probe -- materials # materiais do modelo e onde ficam
-npm run stands:probe -- check     # erro restante do modelo, ao longo do U
+npm run stands:probe -- check     # erro, borda externa real × site e altura livre, ao longo do U
+npm run stands:probe -- up x y z  # o que há acima de um ponto (altura livre)
 npm run stands:calibrate          # mede de novo e regrava a tabela de correção
 ```
 
 Se mudar `STAND_PATH` ou `TIER_PROFILES` em `src/config/stadium.ts`, rode `stands:calibrate` de novo
 (a correção é medida em relação a esses valores).
+
+#### O "ponto cego" dos raios verticais
+
+As bandejas são empilhadas como degraus de uma estante inclinada: a média avança por cima do fundo
+da inferior, e a superior por cima do fundo da média, como uma marquise.
+
+```
+            superior ╱
+         ▓▓▓▓▓▓▓▓▓▓▓╱      ↓ raio vertical: o 1º impacto é a bandeja de cima...
+     média ╱  ↓
+   ▓▓▓▓▓▓▓╱ ░░░            ...e as últimas filas de baixo (░) ficam escondidas.
+ inferior ╱░░
+```
+
+Até a Fase 4, a sonda usava só o **primeiro** impacto de cada raio. Embaixo da marquise esse impacto
+é a bandeja de cima, então as últimas filas da inferior e da média eram invisíveis para a medição.
+Resultado: as bordas externas medidas ficavam onde a marquise começa, não onde as cadeiras acabam
+(inferior ~0,8 m mais baixa e média ~4,4 m mais baixa que o real), e faltavam filas no site.
+
+Agora a sonda pega **todos** os impactos do raio (como um espeto atravessando tudo) e procura entre
+eles a superfície de cadeiras de cada bandeja (`seatHit`). Nos perfis, um `*` marca a bandeja coberta.
+O `check` mostra também a **borda externa real × a última fila do site** ao longo do U.
+
+Consequência esperada: na planta baixa (vista de cima), as bandejas se sobrepõem, em alturas
+diferentes. Nada no site depende de os setores não se sobreporem vistos de cima.
+
+#### Altura livre acima da cabeça
+
+Quem senta nas últimas filas fica embaixo da bandeja de cima. Critério: do ponto dos olhos de cada
+fila (o mesmo que o site usa: superfície + `SEAT_LAYOUT.eyeHeight`), um raio para **cima**. Se bater
+em algo a menos de `SEAT_LAYOUT.minHeadroom` (0,3 m), não cabe uma pessoa sentada ali: é muro, viga,
+corrimão ou corredor no modelo. Esses trechos `[fila, t0, t1]` vão para `noHeadroom` na tabela de
+correção (1001 amostras ao longo do U), e o gerador de cadeiras pula as cadeiras dentro deles.
+
+Medido hoje: a última fila tem pelo menos 1,5 m de folga (inferior) e 2,4 m (média). Só 6 trechos
+de ~35 cm na média ficam de fora: é onde a cadeira cairia sobre o corrimão de uma escada (Metal04).
+Para investigar um ponto: `npm run stands:probe -- up x y z`.
 
 ### 3. Setores como superfícies parametrizadas (`seating/lib/sectorGeometry.ts`)
 
@@ -184,9 +222,9 @@ Nada de matemática nova: **toda cadeira é um ponto (a, b) da mesma superfície
   (`?debug`), elas são geradas de novo. Gerar o estádio inteiro leva ~30 ms.
 - **Fonte única:** `sectors.ts` conta as cadeiras para preencher capacidade e lugares livres.
 
-Total: **29.089 cadeiras** (Inferior 9.433 · Média 8.395 · Superior 10.085 · Palcos 1.176). A Bombonera
+Total: **35.739 cadeiras** (Inferior 11.224 · Média 13.254 · Superior 10.085 · Palcos 1.176). A Bombonera
 real tem ~54 mil lugares, mas muitos são de pé e os camarotes não fazem parte desta camada.
-O maior setor é a **Superior 3, com 1.881 cadeiras**.
+O maior setor é a **Média 3, com 2.297 cadeiras**.
 
 **Palcos:** lá o modelo tem cadeiras 3D de verdade. O script mediu as 6 fileiras, o passo (0,482 m) e
 os corredores, e as cadeiras geradas caem em cima das reais. Em vez de uma segunda cadeira por dentro
@@ -305,6 +343,12 @@ Fase 3: `eye` (olhos, 1,15 m acima do assento) e `yaw` (para onde a cadeira olha
   acima da cabeça, o campo abaixo). A fila 6 dos palcos tem divisórias de camarote, que obstruem a
   visão lateral das cadeiras vizinhas a elas. Algumas cadeiras geradas dessa fila caem rentes a uma
   divisória (limite da geração da Fase 3, que não conhece as divisórias).
+- **A "marquise" não aparece nessa métrica.** As últimas filas da inferior e da média ficam embaixo
+  da bandeja de cima, mas o gramado continua 100% visível: a marquise está ACIMA da linha de visão
+  para baixo. O que ela tapa é o alto: na última fila da média, a bandeja superior corta a visão a
+  ~5° acima do horizonte (uma bola sobre o meio-campo some acima de ~30 m); na última fila da
+  inferior, na lateral, a ~34° (~50 m). A grade de 60 pontos mede só o gramado, então essas filas
+  aparecem como "Visão livre", o que é correto para o que ela mede.
 
 ### 5. Link compartilhável (`seatLink.ts` + `store/seatViewUrl.ts`)
 

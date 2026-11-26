@@ -65,7 +65,7 @@ Formatação e correções de lint rodam ao salvar. Em **Run and Debug**, use _"
    descreve a planta das bandejas, um perfil descreve a inclinação de cada uma, e uma tabela medida
    no próprio modelo corrige as diferenças. Cada setor vira uma superfície translúcida colorida pela
    faixa de preço. Passe o mouse para ver preço e disponibilidade; clique para a câmera voar até ele.
-3. **Cadeiras:** no setor escolhido aparecem as cadeiras (29 mil no estádio, geradas sobre a mesma
+3. **Cadeiras:** no setor escolhido aparecem as cadeiras (~36 mil no estádio, geradas sobre a mesma
    superfície do setor), com fila, número e status. Escolha até 6 no 3D ou no mini-mapa (que também
    funciona só com o teclado) e veja o resumo com o total.
 4. **Visão do assento:** "sente" em qualquer cadeira e veja o campo em primeira pessoa, na altura dos

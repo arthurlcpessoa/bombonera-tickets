@@ -31,8 +31,11 @@ export const STAND_PATH: UPathParams = {
  * se mudar algo aqui, rode `npm run stands:calibrate` de novo.
  */
 export const TIER_PROFILES: Record<CurvedTier, TierProfile> = {
-  lower: { innerOffset: 0, outerOffset: 14.3, innerHeight: 0, outerHeight: 5.7 },
-  middle: { innerOffset: 15.6, outerOffset: 26.5, innerHeight: 9.2, outerHeight: 18 },
+  // Inferior e média: a borda externa fica EMBAIXO da bandeja de cima (veja o "ponto cego" em
+  // scripts/probe-stands.mjs). Altura = a menor borda real medida ao longo do U; offset mantém
+  // a inclinação do perfil.
+  lower: { innerOffset: 0, outerOffset: 16.3, innerHeight: 0, outerHeight: 6.5 },
+  middle: { innerOffset: 15.6, outerOffset: 32, innerHeight: 9.2, outerHeight: 22.4 },
   upper: { innerOffset: 25.8, outerOffset: 37.8, innerHeight: 24.1, outerHeight: 34.8 },
 };
 
@@ -97,6 +100,12 @@ export const SEAT_LAYOUT = {
   eyeHeight: 1.15,
   /** Os olhos ficam um pouco atrás do centro do assento (m), perto do encosto. */
   eyeBack: 0.08,
+  /**
+   * Folga mínima acima dos olhos (m). As últimas filas da inferior e da média ficam embaixo da
+   * bandeja de cima: fila com menos folga que isto não vira cadeira à venda (seria um muro, uma
+   * viga ou um corredor no modelo). Medida por `npm run stands:probe -- check`.
+   */
+  minHeadroom: 0.3,
   /** Passo da "fita métrica" que mede cada fila (m). Menor = cadeiras mais bem espaçadas. */
   rowSampleSpacing: 0.2,
   /** Passo das "diferenças finitas" usadas para achar a inclinação da arquibancada. */

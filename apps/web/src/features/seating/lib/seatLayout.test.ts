@@ -8,7 +8,7 @@ import { SECTORS, TIER_LABELS, type Sector } from '@/features/seating/data/secto
 import { DEFAULT_STANDS_MODEL } from '@/features/seating/data/standsModel';
 import { generateSeats, getSectorSeats, parseSeatId, seatId, seatsByRow } from './seatLayout';
 import { sectorSurface } from './sectorGeometry';
-import { samplePath, tierHeight } from './stadiumPath';
+import { hasHeadroom, samplePath, tierHeight } from './stadiumPath';
 
 const model = DEFAULT_STANDS_MODEL;
 const seatsOf = (sector: Sector) => getSectorSeats(sector, model);
@@ -80,17 +80,56 @@ describe('generateSeats', () => {
 
   it('cadeiras vizinhas na fila ficam a um passo de cadeira uma da outra', () => {
     for (const sector of SECTORS) {
-      const pitch = SEAT_LAYOUT.pitch[sector.shape.kind];
+      const { shape } = sector;
+      const pitch = SEAT_LAYOUT.pitch[shape.kind];
       for (const row of seatsByRow(seatsOf(sector))) {
         for (let i = 1; i < row.length; i++) {
           const [p, q] = [row[i - 1].position, row[i].position];
           const gap = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
           // A distância em linha reta é um pouco menor que a medida pela curva da fila.
           expect(gap).toBeGreaterThan(pitch - 0.03);
-          expect(gap).toBeLessThan(pitch + 0.03);
+          if (gap < pitch + 0.03) continue;
+          // Buraco maior só onde a cadeira do meio foi tirada por falta de folga acima da cabeça.
+          expect(shape.kind).toBe('curved');
+          if (shape.kind !== 'curved') continue;
+          const a = (row[i - 1].a + row[i].a) / 2;
+          const t = shape.t0 + (shape.t1 - shape.t0) * a;
+          expect(hasHeadroom(model.corrections?.[shape.tier], row[i].row, t)).toBe(false);
         }
       }
     }
+  });
+
+  it('nenhuma cadeira fica num trecho sem folga acima da cabeça', () => {
+    for (const sector of SECTORS) {
+      const { shape } = sector;
+      if (shape.kind !== 'curved') continue;
+      for (const seat of seatsOf(sector)) {
+        const t = shape.t0 + (shape.t1 - shape.t0) * seat.a;
+        expect(hasHeadroom(model.corrections?.[shape.tier], seat.row, t)).toBe(true);
+      }
+    }
+  });
+
+  it('um trecho sem folga tira as cadeiras daquela fila, e só dela', () => {
+    const sector = SECTORS.find((s) => s.id === 'lower-4')!;
+    if (sector.shape.kind !== 'curved' || !model.corrections) throw new Error('setor curvo');
+    const { t0, t1 } = sector.shape;
+    // Um "muro" inventado na fila 3, cobrindo o meio do setor.
+    const blocked = {
+      ...model,
+      corrections: {
+        ...model.corrections,
+        lower: {
+          ...model.corrections.lower,
+          noHeadroom: [[3, t0 + (t1 - t0) * 0.4, t0 + (t1 - t0) * 0.6]] as const,
+        },
+      },
+    };
+    const before = seatsByRow(generateSeats(sector, model)).map((row) => row.length);
+    const after = seatsByRow(generateSeats(sector, blocked)).map((row) => row.length);
+    expect(after[2]).toBeLessThan(before[2]);
+    expect(after.filter((_, i) => i !== 2)).toEqual(before.filter((_, i) => i !== 2));
   });
 
   it('fila 1 é a da frente (a mais baixa) e a numeração cresce com a', () => {
