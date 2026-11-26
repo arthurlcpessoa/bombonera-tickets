@@ -5,11 +5,11 @@
  * −Z, até 8, na ponta +Z), com um corredor entre blocos vizinhos. A divisão é simétrica:
  * o meio da lateral (t = 0,5) é sempre a fronteira entre os blocos 4 e 5.
  *
- * Capacidade e lugares livres NÃO são estimados: vêm da contagem das cadeiras geradas
- * (seatLayout.ts). Assim o tooltip, o painel e o 3D mostram sempre o mesmo número.
+ * A capacidade NÃO é estimada: vem da contagem das cadeiras geradas (seatLayout.ts). Quantas estão
+ * livres, reservadas ou vendidas é a API que diz (Fase 5).
  */
 import { PALCOS_BLOCKS_Z, SECTOR_LAYOUT } from './stadium';
-import { countSeats, getSectorSeats } from './seatLayout';
+import { getSectorSeats } from './seatLayout';
 import type { SectorShape } from './sectorGeometry';
 import { pathLength, tierOffset, type CurvedTier } from './stadiumPath';
 import { DEFAULT_STANDS_MODEL } from './standsModel';
@@ -40,10 +40,11 @@ export interface Sector {
   /** Torcida do setor. Ausente = 'home' (casa). Use isAwaySector() para ler. */
   audience?: Audience;
   shape: SectorShape;
-  /** Capacidade = número de cadeiras geradas para o setor. */
+  /**
+   * Capacidade = número de cadeiras geradas para o setor (geometria: não muda). Quantas estão
+   * livres agora é a API que diz (GET /api/matches/:id/sectors).
+   */
   capacity: number;
-  /** Cadeiras livres (status simulado, veja seatLayout.ts). */
-  available: number;
 }
 
 /** Faixas de preço, da mais barata para a mais cara. */
@@ -80,7 +81,7 @@ const BLOCKS_PER_TIER = 8;
 const T_START = 0.008;
 const T_END = 0.992;
 
-type SectorDraft = Omit<Sector, 'capacity' | 'available'>;
+type SectorDraft = Omit<Sector, 'capacity'>;
 
 function curvedSectors(): SectorDraft[] {
   const model = DEFAULT_STANDS_MODEL;
@@ -126,11 +127,11 @@ const SECTOR_OVERRIDES: Record<string, Partial<SectorDraft>> = {
   'upper-8': { name: 'Visitante', categoryId: 'visitante', audience: 'away' },
 };
 
-/** Monta a lista final: capacidade e lugares livres vêm da contagem real das cadeiras. */
+/** Monta a lista final: a capacidade vem da contagem real das cadeiras. */
 function buildSectors(): Sector[] {
   return [...curvedSectors(), ...palcosSectors()].map((generated) => {
     const draft = { ...generated, ...SECTOR_OVERRIDES[generated.id] };
-    return { ...draft, ...countSeats(getSectorSeats(draft, DEFAULT_STANDS_MODEL)) };
+    return { ...draft, capacity: getSectorSeats(draft, DEFAULT_STANDS_MODEL).length };
   });
 }
 

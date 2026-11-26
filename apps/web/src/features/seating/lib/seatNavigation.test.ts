@@ -20,7 +20,6 @@ function fakeSeat(row: number, number: number, a: number): Seat {
     position: [0, 0, 0],
     yaw: 0,
     eye: [0, 0, 0],
-    status: 'available',
   };
 }
 

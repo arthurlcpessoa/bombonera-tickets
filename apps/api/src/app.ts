@@ -5,6 +5,7 @@
  * armazenamento novinho e um relógio falso; em produção, o InMemoryStore (5C: PostgresStore) e o
  * relógio de verdade. A API em si não sabe nem se importa com qual é qual.
  */
+import cors from '@fastify/cors';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import type { Config } from './config';
 import { registerErrorHandling } from './http/errors';
@@ -31,6 +32,14 @@ export async function buildApp({ logger = false, ...deps }: BuildAppOptions) {
   const app = Fastify({ logger, bodyLimit: BODY_LIMIT_BYTES });
 
   registerErrorHandling(app, { production: deps.config.NODE_ENV === 'production' });
+
+  // CORS: o navegador só deixa o site (outra "origem": outra porta ou domínio) ler as respostas se a
+  // API disser que aquela origem pode. A lista vem do .env (CORS_ORIGIN).
+  await app.register(cors, {
+    origin: deps.config.CORS_ORIGIN,
+    methods: ['GET', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   // Todas as rotas ficam sob /api. Cada grupo é um "plugin" do Fastify: uma função que registra
   // as suas rotas e recebe as dependências.

@@ -37,3 +37,22 @@ describe('rota inexistente', () => {
     expect(res.json()).toMatchObject({ error: { code: 'NOT_FOUND' } });
   });
 });
+
+describe('CORS', () => {
+  it('libera a origem do site (do .env) e não libera outras', async () => {
+    const { app } = await testApp();
+    close = () => app.close();
+    const allowed = await app.inject({
+      method: 'GET',
+      url: '/api/health',
+      headers: { origin: 'http://localhost:5173' },
+    });
+    expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:5173');
+    const other = await app.inject({
+      method: 'GET',
+      url: '/api/health',
+      headers: { origin: 'https://site-malicioso.example' },
+    });
+    expect(other.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});

@@ -19,6 +19,11 @@ import {
 } from '@/features/seating/lib/seatView';
 import { SEAT_VIEW } from '@/config/stadium';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import {
+  seatAvailability,
+  useSeatAvailability,
+  type SeatAvailability,
+} from '@/store/useAvailabilityStore';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';
@@ -62,6 +67,7 @@ function Hud({ seatId }: { seatId: string }) {
   const zoom = useSeatViewStore((s) => s.zoom);
   const showSeatsForSale = useSeatViewStore((s) => s.showSeatsForSale);
   const visibilityResult = useSeatViewStore((s) => s.visibility);
+  const availability = useSeatAvailability(seatId);
   const selectedIds = useSeatStore((s) => s.selectedSeatIds);
   const [limitHit, setLimitHit] = useState(false);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'error'>('idle');
@@ -138,7 +144,8 @@ function Hud({ seatId }: { seatId: string }) {
   const { seat, sector } = found;
   const sectorSeats = getSectorSeats(sector, model);
   const category = getCategory(sector.categoryId);
-  const sold = seat.status === 'sold';
+  // Só cadeira livre pode ser escolhida (dá para espiar a visão de qualquer uma).
+  const blocked = availability !== 'available';
   const selected = selectedIds.includes(seat.id);
   const away = isAwaySector(sector);
   const has = (d: SeatDirection) => neighborSeat(sectorSeats, seat, d) !== null;
@@ -270,10 +277,10 @@ function Hud({ seatId }: { seatId: string }) {
       </header>
 
       <p className="mt-1 flex items-center gap-2 text-sm">
-        <span className={sold ? 'text-white/50' : 'text-boca-gold font-bold'}>
+        <span className={blocked ? 'text-white/50' : 'text-boca-gold font-bold'}>
           {formatPrice(category.price)}
         </span>
-        <StatusChip sold={sold} selected={selected} />
+        <StatusChip availability={availability} selected={selected} />
       </p>
 
       <dl className="short:mt-2 mt-3 grid grid-cols-4 gap-1.5 text-center">
@@ -344,16 +351,16 @@ function Hud({ seatId }: { seatId: string }) {
           <button
             type="button"
             onClick={toggle}
-            disabled={sold}
+            disabled={blocked && !selected}
             className={`w-full cursor-pointer rounded-2xl px-3 py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed ${
-              sold
+              blocked && !selected
                 ? 'bg-white/10 text-white/40'
                 : selected
                   ? 'border border-white/20 bg-white/5 text-white hover:bg-white/10'
                   : 'bg-boca-gold text-boca-navy hover:brightness-110'
             }`}
           >
-            {sold ? 'Cadeira vendida' : selected ? 'Remover da seleção' : 'Escolher esta cadeira'}
+            {selected ? 'Remover da seleção' : BLOCKED_LABEL[availability]}
           </button>
 
           <div className="flex items-center justify-between gap-2 text-xs text-white/70">
@@ -449,13 +456,17 @@ function Hud({ seatId }: { seatId: string }) {
 
 /**
  * Escolhe ou desfaz a escolha da cadeira em exibição, lendo os stores na hora (serve tanto ao
- * botão quanto à tecla Enter). Vendida não faz nada. Devolve false só se bateu no limite.
+ * botão quanto à tecla Enter). Vendida ou reservada não faz nada. Devolve false só se bateu no limite.
  */
 function toggleViewingSeat(): boolean {
   const id = useSeatViewStore.getState().viewingSeatId;
   const found = id ? findSeat(id, useStandsStore.getState().model) : null;
-  if (!found || found.seat.status === 'sold') return true;
-  return useSeatStore.getState().toggleSeat(found.seat.id);
+  if (!found) return true;
+  const { selectedSeatIds, toggleSeat } = useSeatStore.getState();
+  // Desfazer a escolha sempre pode; escolher, só se estiver livre.
+  if (!selectedSeatIds.includes(found.seat.id) && seatAvailability(found.seat.id) !== 'available')
+    return true;
+  return toggleSeat(found.seat.id);
 }
 
 const VISIBILITY_DOT: Record<VisibilityLevel, string> = {
@@ -563,12 +574,31 @@ function CoverIcon({ covered }: { covered: boolean }) {
   );
 }
 
-function StatusChip({ sold, selected }: { sold: boolean; selected: boolean }) {
-  const [label, className] = sold
-    ? ['Vendida', 'bg-white/10 text-white/60']
-    : selected
-      ? ['Escolhida', 'bg-boca-gold/20 text-boca-gold']
-      : ['Livre', 'bg-emerald-400/15 text-emerald-300'];
+/** Texto do botão principal quando a cadeira não está escolhida. */
+const BLOCKED_LABEL: Record<SeatAvailability, string> = {
+  available: 'Escolher esta cadeira',
+  held: 'Cadeira reservada',
+  sold: 'Cadeira vendida',
+  unknown: 'Disponibilidade indisponível',
+};
+
+function StatusChip({
+  availability,
+  selected,
+}: {
+  availability: SeatAvailability;
+  selected: boolean;
+}) {
+  const [label, className] =
+    availability === 'sold'
+      ? ['Vendida', 'bg-white/10 text-white/60']
+      : availability === 'held'
+        ? ['Reservada', 'bg-slate-300/15 text-slate-200']
+        : availability === 'unknown'
+          ? ['Carregando…', 'bg-white/10 text-white/60']
+          : selected
+            ? ['Escolhida', 'bg-boca-gold/20 text-boca-gold']
+            : ['Livre', 'bg-emerald-400/15 text-emerald-300'];
   return (
     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${className}`}>
       {label}

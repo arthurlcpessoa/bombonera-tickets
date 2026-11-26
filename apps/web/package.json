@@ -12,14 +12,17 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@bombonera/shared": "*",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
+    "@tanstack/react-query": "^5.108.4",
     "leva": "^0.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.187.0",
     "three-mesh-bvh": "^0.8.3",
+    "zod": "^4.6.7",
     "zustand": "^5.1.0"
   },
   "devDependencies": {

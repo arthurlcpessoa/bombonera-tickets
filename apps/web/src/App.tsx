@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { ApiStatusBanner } from '@/components/ui/ApiStatusBanner';
 import { Credits } from '@/components/ui/Credits';
 import { Header } from '@/components/ui/Header';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
@@ -10,6 +11,7 @@ import { SeatViewHud } from '@/components/ui/SeatViewHud';
 import { SectorTooltip } from '@/components/ui/SectorTooltip';
 import { SelectionDock } from '@/components/ui/SelectionDock';
 import { ViewSwitcher } from '@/components/ui/ViewSwitcher';
+import { AvailabilitySync } from '@/features/availability/AvailabilitySync';
 import { StadiumCanvas } from '@/features/stadium/components/StadiumCanvas';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 
@@ -30,6 +32,7 @@ export function App() {
 
   return (
     <main className="relative h-full w-full" data-seat-view={viewingSeat ? '' : undefined}>
+      <AvailabilitySync />
       <StadiumCanvas />
 
       <Header />
@@ -40,6 +43,7 @@ export function App() {
       <SelectionDock />
       <SeatViewHud />
       <NoticeToast />
+      <ApiStatusBanner />
       <SectorTooltip />
       <SeatTooltip />
       <LoadingScreen />

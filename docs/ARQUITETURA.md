@@ -48,7 +48,8 @@ prédio" que o arquiteto (site) e o síndico (API) consultam: uma só, para nunc
 
 O topo da tela mostra o jogo do ingresso (`components/ui/MatchInfo.tsx`, que é o `h1` da página).
 A partida é **fictícia**: Boca Juniors × River Plate, Campeonato Argentino, domingo 13/12/2026, 17h00.
-Os dados ficam em `match/data/match.ts` (na Fase 5 virão da API) e `match/lib/formatKickoff.ts`
+Desde a Fase 5 os dados vêm da API (`GET /api/matches/current`); o site guarda só os escudos
+(`match/data/teams.ts`, pelo id de cada time). `match/lib/formatKickoff.ts`
 formata data e hora sempre no fuso de Buenos Aires, o horário impresso no ingresso, seja qual for o
 fuso de quem abre o site.
 

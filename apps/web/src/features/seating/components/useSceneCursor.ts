@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
-import { findSeat } from '@bombonera/shared';
+import { seatAvailability, useAvailabilityStore } from '@/store/useAvailabilityStore';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSelectionStore } from '@/store/useSelectionStore';
-import { useStandsStore } from '@/store/useStandsStore';
 
 /**
  * Cursor de "mãozinha" sobre o que é clicável no 3D: um setor ou uma cadeira LIVRE.
@@ -19,8 +18,7 @@ export function useSceneCursor() {
       const { hoveredSeatId, hoverSource } = useSeatStore.getState();
       let clickable = showSectors && hoveredSectorId !== null;
       if (hoveredSeatId && hoverSource === 'scene') {
-        const found = findSeat(hoveredSeatId, useStandsStore.getState().model);
-        clickable = found?.seat.status === 'available';
+        clickable = seatAvailability(hoveredSeatId) === 'available';
       }
       const next = clickable ? 'pointer' : '';
       if (next !== current) {
@@ -31,9 +29,12 @@ export function useSceneCursor() {
 
     const unsubscribeSelection = useSelectionStore.subscribe(update);
     const unsubscribeSeats = useSeatStore.subscribe(update);
+    // A cadeira sob o mouse pode mudar de estado (ex.: alguém a reservou) sem o mouse se mexer.
+    const unsubscribeAvailability = useAvailabilityStore.subscribe(update);
     return () => {
       unsubscribeSelection();
       unsubscribeSeats();
+      unsubscribeAvailability();
       document.body.style.cursor = '';
     };
   }, []);
