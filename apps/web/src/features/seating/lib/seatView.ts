@@ -179,6 +179,87 @@ export function classifyVisibility(blocked: number, total: number): Visibility {
   return { level: 'heavy', blockedPercent, label: `Visão bastante obstruída (${blockedPercent}%)` };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Teto da visão: setor coberto ou descoberto
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Raio do "teto": sai dos olhos na direção do centro do campo, inclinado `elevationDeg` acima do
+ * horizonte, e para quando chega em cima do meio-campo (`far`). Não interessa o que está além
+ * (a arquibancada do outro lado), só o que fica entre o torcedor e a bola.
+ *
+ *            ╱ 90°: reto para cima
+ *     ▓▓▓▓▓▓╱▓▓ bandeja de cima       ← a varredura desce de 90° até achar um raio livre
+ *       ●──╱───── 5°: ainda bate?
+ *     olhos ─────────────────── ✕ meio-campo
+ */
+export function ceilingRay(eye: Point3, elevationDeg: number): { direction: Point3; far: number } {
+  const h = Math.hypot(eye[0], eye[2]) || 1; // distância no chão até o centro do campo
+  const r = (elevationDeg * Math.PI) / 180;
+  const cos = Math.cos(r);
+  return {
+    direction: [(-eye[0] / h) * cos, Math.sin(r), (-eye[2] / h) * cos],
+    // Em 90° o raio nunca chega "em cima do meio-campo": vai até o céu.
+    far: cos > 1e-6 ? h / cos : Infinity,
+  };
+}
+
+/**
+ * Varre os ângulos de cima para baixo (90°, 89°, …, 0°) enquanto o raio bate em alguma estrutura.
+ * O teto é o MENOR ângulo dessa faixa bloqueada que começa no zênite (reto para cima).
+ *
+ * Por que de cima para baixo: o que interessa é a cobertura, o "telhado" sobre a cadeira.
+ * Um obstáculo baixo e isolado (corrimão, mureta) não é telhado: quem cuida dele é a visibilidade
+ * do campo. Se o raio reto para cima já sai livre, não há nada sobre a cadeira: `null`.
+ *
+ * @param isBlocked diz se o raio naquele ângulo (graus) bate em algo
+ * @returns ângulo do teto em graus, ou null = descoberto
+ */
+export function findCeiling(
+  isBlocked: (elevationDeg: number) => boolean,
+  stepDeg: number = SEAT_VIEW.ceilingStepDeg,
+): number | null {
+  let ceiling: number | null = null;
+  for (let deg = 90; deg >= 0; deg -= stepDeg) {
+    if (!isBlocked(deg)) break;
+    ceiling = deg;
+  }
+  return ceiling;
+}
+
+export interface Cover {
+  covered: boolean;
+  /** Altura (m, acima da grama) até onde a bola fica visível sobre o meio-campo. null = sem limite. */
+  ballHeight: number | null;
+  label: string;
+  detail: string;
+}
+
+/**
+ * Texto do teto da visão, a partir do ângulo medido por `findCeiling`.
+ *
+ * Altura da bola: no limite do teto, a linha de visão sobe `tan(ângulo)` metros a cada metro
+ * andado no chão. Até o meio-campo (distância h no chão), sobe h × tan(ângulo), a partir dos olhos.
+ */
+export function classifyCover(eye: Point3, ceilingDeg: number | null): Cover {
+  if (ceilingDeg === null) {
+    return { covered: false, ballHeight: null, label: 'Descoberto', detail: 'A céu aberto' };
+  }
+  const h = Math.hypot(eye[0], eye[2]);
+  const ballHeight = Math.max(0, eye[1] + h * Math.tan((ceilingDeg * Math.PI) / 180));
+  const { ballHeightRound, ballHeightMax } = SEAT_VIEW;
+  const ball =
+    ballHeight > ballHeightMax
+      ? `mais de ${ballHeightMax} m`
+      : `~${Math.max(ballHeightRound, Math.round(ballHeight / ballHeightRound) * ballHeightRound)} m`;
+  return {
+    covered: true,
+    ballHeight,
+    label: 'Setor coberto',
+    detail: `Protegido de chuva e sol · bola visível até ${ball} de altura sobre o meio-campo`,
+  };
+}
+
 function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max);
 }

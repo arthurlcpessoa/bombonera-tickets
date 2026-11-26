@@ -19,7 +19,7 @@ import { SEAT_LAYOUT, SECTOR_LAYOUT } from '@/config/stadium';
 import type { Sector } from '@/features/seating/data/sectors';
 import { createRandom } from './random';
 import { sectorDepth, sectorSurface, type StandsModel, type Surface } from './sectorGeometry';
-import type { Point3 } from './stadiumPath';
+import { hasHeadroom, type Point3 } from './stadiumPath';
 
 export type SeatStatus = 'available' | 'sold';
 
@@ -197,15 +197,20 @@ export function generateSeats(sector: SeatSource, model: StandsModel): Seat[] {
     // Quantas cadeiras cabem (com ¼ de cadeira de tolerância para arredondamentos).
     const count = Math.max(0, Math.floor((measured.length - 2 * rowEndMargin) / pitch + 0.25));
 
+    // Cadeiras centralizadas na fila, uma a cada `pitch` metros. Ficam de fora as que caem num
+    // trecho sem folga acima da cabeça (TierCorrection.noHeadroom): ninguém senta embaixo de uma viga.
+    const places: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const a = aAtDistance(measured, measured.length / 2 + (i - (count - 1) / 2) * pitch);
+      if (seatHasHeadroom(sector.shape, model, row, a)) places.push(a);
+    }
+
     // Filas da frente vendem mais: chance entre (1 + bias/2) e (1 − bias/2) vezes a média.
     const depthShare = rows > 1 ? (row - 1) / (rows - 1) : 0.5;
     const soldChance = Math.min(1, soldShare * (1 + FRONT_ROW_BIAS * (0.5 - depthShare)));
-    const statuses = rowStatuses(count, soldChance, random);
+    const statuses = rowStatuses(places.length, soldChance, random);
 
-    for (let i = 0; i < count; i++) {
-      // Cadeiras centralizadas na fila, uma a cada `pitch` metros.
-      const distance = measured.length / 2 + (i - (count - 1) / 2) * pitch;
-      const a = aAtDistance(measured, distance);
+    for (const [i, a] of places.entries()) {
       const position = surface(a, b);
       const [fx, fz] = facingAt(surface, a, b);
       seats.push({
@@ -224,6 +229,13 @@ export function generateSeats(sector: SeatSource, model: StandsModel): Seat[] {
     }
   }
   return seats;
+}
+
+/** A cadeira (fila `row`, posição `a` no setor) tem folga acima da cabeça? Palcos: sempre. */
+function seatHasHeadroom(shape: SeatSource['shape'], model: StandsModel, row: number, a: number) {
+  if (shape.kind !== 'curved') return true;
+  const t = shape.t0 + (shape.t1 - shape.t0) * a;
+  return hasHeadroom(model.corrections?.[shape.tier], row, t);
 }
 
 /**

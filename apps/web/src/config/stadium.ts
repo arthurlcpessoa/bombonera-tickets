@@ -31,8 +31,11 @@ export const STAND_PATH: UPathParams = {
  * se mudar algo aqui, rode `npm run stands:calibrate` de novo.
  */
 export const TIER_PROFILES: Record<CurvedTier, TierProfile> = {
-  lower: { innerOffset: 0, outerOffset: 14.3, innerHeight: 0, outerHeight: 5.7 },
-  middle: { innerOffset: 15.6, outerOffset: 26.5, innerHeight: 9.2, outerHeight: 18 },
+  // Inferior e média: a borda externa fica EMBAIXO da bandeja de cima (veja o "ponto cego" em
+  // scripts/probe-stands.mjs). Altura = a menor borda real medida ao longo do U; offset mantém
+  // a inclinação do perfil.
+  lower: { innerOffset: 0, outerOffset: 16.3, innerHeight: 0, outerHeight: 6.5 },
+  middle: { innerOffset: 15.6, outerOffset: 32, innerHeight: 9.2, outerHeight: 22.4 },
   upper: { innerOffset: 25.8, outerOffset: 37.8, innerHeight: 24.1, outerHeight: 34.8 },
 };
 
@@ -97,6 +100,12 @@ export const SEAT_LAYOUT = {
   eyeHeight: 1.15,
   /** Os olhos ficam um pouco atrás do centro do assento (m), perto do encosto. */
   eyeBack: 0.08,
+  /**
+   * Folga mínima acima dos olhos (m). As últimas filas da inferior e da média ficam embaixo da
+   * bandeja de cima: fila com menos folga que isto não vira cadeira à venda (seria um muro, uma
+   * viga ou um corredor no modelo). Medida por `npm run stands:probe -- check`.
+   */
+  minHeadroom: 0.3,
   /** Passo da "fita métrica" que mede cada fila (m). Menor = cadeiras mais bem espaçadas. */
   rowSampleSpacing: 0.2,
   /** Passo das "diferenças finitas" usadas para achar a inclinação da arquibancada. */
@@ -135,6 +144,20 @@ export const SECTOR_PANEL_LAYOUT = {
   sideWidth: 384,
   /** Altura aproximada da gaveta no celular (px), com o mini-mapa de cadeiras. */
   sheetHeight: 430,
+} as const;
+
+/**
+ * HUD da visão do assento por tamanho de tela:
+ *   - desktop: cartão completo à esquerda;
+ *   - celular em pé (`barQuery`): barra recolhida embaixo, que expande ao tocar;
+ *   - tela baixa, como o celular deitado (até `shortMaxHeight` px de altura): cartão lateral
+ *     compacto. O mesmo limite está na variante `short:` do index.css.
+ */
+const SEAT_HUD_SHORT_MAX_HEIGHT = 500;
+export const SEAT_HUD_LAYOUT = {
+  shortMaxHeight: SEAT_HUD_SHORT_MAX_HEIGHT,
+  shortQuery: `(max-height: ${SEAT_HUD_SHORT_MAX_HEIGHT}px)`,
+  barQuery: `(max-width: ${SECTOR_PANEL_LAYOUT.desktopMinWidth - 1}px) and (min-height: ${SEAT_HUD_SHORT_MAX_HEIGHT + 1}px)`,
 } as const;
 
 export const PITCH = {
@@ -180,6 +203,14 @@ export const SEAT_VIEW = {
    * própria cabeça encostando (ex.: cadeiras geradas rentes a uma divisória de camarote).
    */
   visibilityNear: 0.25,
+  /**
+   * Teto da visão (setor coberto): raios dos olhos em direção ao meio-campo, de 90° (reto para
+   * cima) até 0°, a cada `ceilingStepDeg` graus. A altura da bola é arredondada para múltiplos de
+   * `ballHeightRound` m; acima de `ballHeightMax` m, mostramos "mais de".
+   */
+  ceilingStepDeg: 1,
+  ballHeightRound: 5,
+  ballHeightMax: 100,
 } as const;
 
 /** Limites da câmera orbital para o usuário não "atravessar" o estádio. */

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PITCH, SEAT_VIEW } from '@/config/stadium';
 import {
+  ceilingRay,
+  classifyCover,
   classifyVisibility,
+  findCeiling,
   fieldSamplePoints,
   initialLookTarget,
   isWithinTurn,
@@ -118,5 +121,81 @@ describe('classifyVisibility', () => {
 
   it('sem raios não divide por zero', () => {
     expect(classifyVisibility(0, 0).level).toBe('clear');
+  });
+});
+
+describe('ceilingRay', () => {
+  const eye: [number, number, number] = [-80, 23, 0]; // lateral −X, alto
+
+  it('em 0° aponta reto para o centro do campo e para em cima do meio-campo', () => {
+    const { direction, far } = ceilingRay(eye, 0);
+    expect(direction[0]).toBeCloseTo(1);
+    expect(direction[1]).toBeCloseTo(0);
+    expect(direction[2]).toBeCloseTo(0);
+    expect(far).toBeCloseTo(80);
+  });
+
+  it('em 90° aponta para cima e não tem limite', () => {
+    const { direction, far } = ceilingRay(eye, 90);
+    expect(direction[1]).toBeCloseTo(1);
+    expect(far).toBe(Infinity);
+  });
+
+  it('a direção tem sempre tamanho 1 e o raio termina em cima do meio-campo', () => {
+    for (const deg of [10, 33, 60]) {
+      const { direction, far } = ceilingRay([30, 5, -70], deg);
+      expect(Math.hypot(...direction)).toBeCloseTo(1);
+      const end = [30 + direction[0] * far, 5 + direction[1] * far, -70 + direction[2] * far];
+      expect(end[0]).toBeCloseTo(0);
+      expect(end[2]).toBeCloseTo(0);
+    }
+  });
+});
+
+describe('findCeiling', () => {
+  it('acha o menor ângulo da faixa bloqueada que começa no zênite', () => {
+    expect(findCeiling((deg) => deg >= 40, 1)).toBe(40);
+  });
+
+  it('sem nada reto para cima, é descoberto (null)', () => {
+    expect(findCeiling((deg) => deg < 89, 1)).toBeNull();
+    expect(findCeiling(() => false, 1)).toBeNull();
+  });
+
+  it('ignora um obstáculo baixo separado do telhado (corrimão, mureta)', () => {
+    expect(findCeiling((deg) => deg >= 40 || (deg >= 5 && deg <= 10), 1)).toBe(40);
+  });
+
+  it('tudo bloqueado: o teto fica no horizonte', () => {
+    expect(findCeiling(() => true, 1)).toBe(0);
+  });
+});
+
+describe('classifyCover', () => {
+  it('sem teto: descoberto, sem limite para a bola', () => {
+    const cover = classifyCover([-80, 23, 0], null);
+    expect(cover.covered).toBe(false);
+    expect(cover.label).toBe('Descoberto');
+    expect(cover.ballHeight).toBeNull();
+  });
+
+  it('com teto: coberto, com a altura da bola sobre o meio-campo', () => {
+    // 23 m + 80 m × tan(5°) ≈ 30 m
+    const cover = classifyCover([-80, 23, 0], 5);
+    expect(cover.covered).toBe(true);
+    expect(cover.label).toBe('Setor coberto');
+    expect(cover.ballHeight).toBeCloseTo(23 + 80 * Math.tan((5 * Math.PI) / 180));
+    expect(cover.detail).toContain('chuva e sol');
+    expect(cover.detail).toContain('~30 m');
+  });
+
+  it('quanto mais alto o teto, mais alta a bola visível', () => {
+    const low = classifyCover([-60, 7, 0], 20).ballHeight!;
+    const high = classifyCover([-60, 7, 0], 40).ballHeight!;
+    expect(high).toBeGreaterThan(low);
+  });
+
+  it('teto muito alto vira "mais de" o limite', () => {
+    expect(classifyCover([-60, 7, 0], 80).detail).toContain(`mais de ${SEAT_VIEW.ballHeightMax} m`);
   });
 });

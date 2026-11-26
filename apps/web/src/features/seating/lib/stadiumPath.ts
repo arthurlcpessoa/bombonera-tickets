@@ -71,6 +71,24 @@ export interface TierProfile {
 export interface TierCorrection {
   inner: readonly number[];
   outer: readonly number[];
+  /**
+   * Trechos de fila SEM altura livre acima da cabeça (bandeja de cima, viga, muro), medidos no
+   * modelo por um raio para cima a partir dos olhos. Cadeiras nesses trechos não são geradas.
+   * Cada item é [fila, t0, t1]: a fila (1 = frente) não tem folga de t0 a t1 ao longo do U.
+   */
+  noHeadroom?: readonly HeadroomGap[];
+}
+
+/** Trecho de fila sem folga acima da cabeça: [fila, t0, t1]. */
+export type HeadroomGap = readonly [row: number, t0: number, t1: number];
+
+/** A fila `row` tem folga acima da cabeça no ponto t do U? (sem tabela = sim) */
+export function hasHeadroom(
+  correction: TierCorrection | undefined,
+  row: number,
+  t: number,
+): boolean {
+  return !correction?.noHeadroom?.some(([r, t0, t1]) => r === row && t >= t0 && t <= t1);
 }
 
 /** Um ponto no chão (planta baixa) + a direção "para fora do campo" naquele ponto. */

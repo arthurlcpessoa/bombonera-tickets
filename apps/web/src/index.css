@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+/*
+ * Tela baixa (celular deitado): `short:` aplica estilos só com até 500 px de altura.
+ * O mesmo limite está em SEAT_HUD_LAYOUT (src/config/stadium.ts), usado pelo JavaScript.
+ */
+@custom-variant short (@media (max-height: 500px));
+
 /* Cores do Boca (azul e ouro) como tokens do Tailwind: bg-boca-blue, text-boca-gold... */
 @theme {
   --color-boca-navy: #0b1f4d;
