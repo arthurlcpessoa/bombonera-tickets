@@ -259,6 +259,16 @@ export function getSectorSeats(sector: SeatSource, model: StandsModel): Seat[] {
   return seats;
 }
 
+/**
+ * Cadeiras que a simulação marca como vendidas (mesma semente → sempre as mesmas).
+ * A API usa isto para o estado inicial do jogo, e o site continua com a mesma "cara" de antes.
+ */
+export function simulatedSoldSeatIds(sector: SeatSource, model: StandsModel): Set<string> {
+  const sold = new Set<string>();
+  for (const seat of getSectorSeats(sector, model)) if (seat.status === 'sold') sold.add(seat.id);
+  return sold;
+}
+
 /** Capacidade e lugares livres, contados nas próprias cadeiras. */
 export function countSeats(seats: readonly Seat[]): { capacity: number; available: number } {
   let available = 0;

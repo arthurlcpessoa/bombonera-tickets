@@ -1,0 +1,31 @@
+{
+  "name": "@bombonera/api",
+  "private": true,
+  "version": "0.0.0",
+  "description": "API de ingressos: disponibilidade real e reserva temporária das cadeiras.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc --noEmit && tsup",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bombonera/shared": "*",
+    "@fastify/cors": "^11.4.3",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.3.0",
+    "fastify": "^5.12.8",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "oxlint": "^1.90.0",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "~7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
