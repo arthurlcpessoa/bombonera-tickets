@@ -189,6 +189,14 @@ export const SEAT_VIEW = {
    * própria cabeça encostando (ex.: cadeiras geradas rentes a uma divisória de camarote).
    */
   visibilityNear: 0.25,
+  /**
+   * Teto da visão (setor coberto): raios dos olhos em direção ao meio-campo, de 90° (reto para
+   * cima) até 0°, a cada `ceilingStepDeg` graus. A altura da bola é arredondada para múltiplos de
+   * `ballHeightRound` m; acima de `ballHeightMax` m, mostramos "mais de".
+   */
+  ceilingStepDeg: 1,
+  ballHeightRound: 5,
+  ballHeightMax: 100,
 } as const;
 
 /** Limites da câmera orbital para o usuário não "atravessar" o estádio. */

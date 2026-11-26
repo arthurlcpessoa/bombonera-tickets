@@ -7,6 +7,16 @@ import { useSeatStore } from './useSeatStore';
 import { useSelectionStore } from './useSelectionStore';
 import { useStandsStore } from './useStandsStore';
 
+/** O que o SeatVisibilityProbe mede para uma cadeira (os textos saem de lib/seatView.ts). */
+export interface SeatVisibilityResult {
+  seatId: string;
+  /** Raios até o gramado bloqueados, de um total. */
+  blocked: number;
+  total: number;
+  /** Teto da visão em graus acima do horizonte (findCeiling); null = descoberto. */
+  ceilingDeg: number | null;
+}
+
 /**
  * Visão do assento (Zustand): qual cadeira está sendo "experimentada" em primeira pessoa.
  *
@@ -29,9 +39,9 @@ interface SeatViewState {
   showNotice: (text: string) => void;
   dismissNotice: () => void;
 
-  /** Resultado do teste de visibilidade por raios (null enquanto calcula). */
-  visibility: { seatId: string; blocked: number; total: number } | null;
-  setVisibility: (visibility: { seatId: string; blocked: number; total: number }) => void;
+  /** Resultado do teste de visibilidade e do teto por raios (null enquanto calcula). */
+  visibility: SeatVisibilityResult | null;
+  setVisibility: (visibility: SeatVisibilityResult) => void;
 
   /** Na visão do assento, reexibe os marcadores das cadeiras do setor (começa desligado). */
   showSeatsForSale: boolean;

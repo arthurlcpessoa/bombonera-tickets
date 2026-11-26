@@ -6,6 +6,7 @@ import { getSectorSeats } from '@/features/seating/lib/seatLayout';
 import { neighborSeat, type SeatDirection } from '@/features/seating/lib/seatNavigation';
 import { formatPrice } from '@/features/seating/lib/pricing';
 import {
+  classifyCover,
   classifyVisibility,
   seatMetrics,
   type VisibilityLevel,
@@ -124,10 +125,9 @@ function Hud({ seatId }: { seatId: string }) {
   const has = (d: SeatDirection) => neighborSeat(sectorSeats, seat, d) !== null;
   const metrics = seatMetrics(seat.eye);
   // Só vale o resultado desta cadeira (ao trocar, o anterior fica "velho" até o novo cálculo).
-  const visibility =
-    visibilityResult?.seatId === seat.id
-      ? classifyVisibility(visibilityResult.blocked, visibilityResult.total)
-      : null;
+  const current = visibilityResult?.seatId === seat.id ? visibilityResult : null;
+  const visibility = current ? classifyVisibility(current.blocked, current.total) : null;
+  const cover = current ? classifyCover(seat.eye, current.ceilingDeg) : null;
   const { moveSeatView, exitSeatView, zoomBy, setShowSeatsForSale } = useSeatViewStore.getState();
 
   return (
@@ -192,6 +192,15 @@ function Hud({ seatId }: { seatId: string }) {
           {visibility ? visibility.label : 'Calculando visibilidade do campo…'}
         </span>
       </p>
+      {cover && (
+        <p className="mt-1.5 flex items-start gap-2 text-xs" aria-live="polite">
+          <CoverIcon covered={cover.covered} />
+          <span className="text-white/85">
+            <span className="font-semibold">{cover.label}</span>
+            <span className="block text-[11px] leading-snug text-white/55">{cover.detail}</span>
+          </span>
+        </p>
+      )}
 
       <div className="mt-3 flex items-center gap-3">
         {/* Setas de navegação, em cruz, como as do teclado. */}
@@ -366,6 +375,31 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dd className="text-sm font-bold tabular-nums">{value}</dd>
       <dt className="text-[10px] leading-tight text-white/55">{label}</dt>
     </div>
+  );
+}
+
+/** Telhado (setor coberto) ou sol (descoberto). */
+function CoverIcon({ covered }: { covered: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`mt-px size-3.5 shrink-0 ${covered ? 'text-sky-300' : 'text-amber-200'}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {covered ? (
+        <path d="M3 11l9-6 9 6M6 9.5V19h12V9.5" />
+      ) : (
+        <>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </>
+      )}
+    </svg>
   );
 }
 

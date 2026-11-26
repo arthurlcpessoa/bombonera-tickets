@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Mesh, Raycaster, Vector3, type Material, type Object3D } from 'three';
 import { SEAT_VIEW, STADIUM_MODEL_URL } from '@/config/stadium';
 import { findSeat } from '@/features/seating/data/seats';
-import { fieldSamplePoints } from '@/features/seating/lib/seatView';
+import { ceilingRay, fieldSamplePoints, findCeiling } from '@/features/seating/lib/seatView';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';
 
@@ -23,6 +23,10 @@ const MAX_WAIT_FRAMES = 300;
  *     olhos ●───────────────────▶ ✓ ponto visível
  *            ╲   ▓▓ laje
  *             ╲──▓▓               ✗ bloqueado (bateu na laje antes do ponto)
+ *
+ * Teto da visão: com os mesmos raios, medimos se há estrutura ACIMA da cadeira (setor coberto) e
+ * até que ângulo dá para olhar para cima, rumo ao meio-campo (veja findCeiling em lib/seatView.ts).
+ * São no máximo 91 raios a mais (1 por grau), calculados no mesmo momento.
  *
  * O que NÃO bloqueia: materiais transparentes (alambrado, vidros, telas), porque através deles se
  * vê o jogo; e o que estiver a menos de SEAT_VIEW.visibilityNear dos olhos (seria a própria cabeça).
@@ -54,7 +58,19 @@ export function SeatVisibilityProbe() {
         raycaster.far = distance - SEAT_VIEW.visibilityTolerance;
         if (raycaster.intersectObjects(blockers, false).length > 0) blocked++;
       }
-      useSeatViewStore.getState().setVisibility({ seatId, blocked, total: SAMPLES.length });
+
+      // Teto da visão: de 90° para baixo, rumo ao meio-campo, enquanto houver estrutura no caminho.
+      const ceilingDeg = findCeiling((deg) => {
+        const ray = ceilingRay(found.seat.eye, deg);
+        raycaster.set(eye, direction.set(...ray.direction));
+        raycaster.near = SEAT_VIEW.visibilityNear;
+        raycaster.far = ray.far;
+        return raycaster.intersectObjects(blockers, false).length > 0;
+      });
+
+      useSeatViewStore
+        .getState()
+        .setVisibility({ seatId, blocked, total: SAMPLES.length, ceilingDeg });
     };
 
     /** Espera o próximo quadro (o HUD aparece antes) e o índice BVH ficar pronto. */

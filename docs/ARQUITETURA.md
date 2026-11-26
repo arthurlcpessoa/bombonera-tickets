@@ -345,10 +345,19 @@ Fase 3: `eye` (olhos, 1,15 m acima do assento) e `yaw` (para onde a cadeira olha
   divisória (limite da geração da Fase 3, que não conhece as divisórias).
 - **A "marquise" não aparece nessa métrica.** As últimas filas da inferior e da média ficam embaixo
   da bandeja de cima, mas o gramado continua 100% visível: a marquise está ACIMA da linha de visão
-  para baixo. O que ela tapa é o alto: na última fila da média, a bandeja superior corta a visão a
-  ~5° acima do horizonte (uma bola sobre o meio-campo some acima de ~30 m); na última fila da
-  inferior, na lateral, a ~34° (~50 m). A grade de 60 pontos mede só o gramado, então essas filas
-  aparecem como "Visão livre", o que é correto para o que ela mede.
+  para baixo. A grade de 60 pontos mede só o gramado, então essas filas aparecem como "Visão livre",
+  o que é correto para o que ela mede. O que a marquise tapa é o alto, e isso vira o teto da visão.
+- **Teto da visão** (`ceilingRay`, `findCeiling` e `classifyCover`, puras; raios no
+  `SeatVisibilityProbe`, no mesmo momento da visibilidade): dos olhos, raios rumo ao meio-campo, de
+  90° (reto para cima) descendo 1° por vez enquanto batem em alguma estrutura. Cada raio para em cima
+  do meio-campo, para não contar a arquibancada do outro lado. Se o raio reto para cima já sai livre,
+  a cadeira é **"Descoberto"**. Senão, é **"Setor coberto"** (protegido de chuva e sol), e o menor
+  ângulo bloqueado dá a altura até onde a bola fica visível sobre o meio-campo: olhos + distância no
+  chão × tan(ângulo). A varredura vem de cima para baixo para achar o telhado: um obstáculo baixo e
+  separado (corrimão) é assunto da visibilidade do campo, não do teto.
+- **Medido no modelo:** última fila da média, bola visível até ~30 m (teto a ~5°); última fila da
+  inferior na lateral, até ~50 m (~34°); fila 6 dos palcos, colada na laje, até ~10 m. A superior e
+  as filas da frente da inferior e da média são descobertas.
 
 ### 5. Link compartilhável (`seatLink.ts` + `store/seatViewUrl.ts`)
 
