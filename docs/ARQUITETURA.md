@@ -321,6 +321,12 @@ Fase 3: `eye` (olhos, 1,15 m acima do assento) e `yaw` (para onde a cadeira olha
 - **HUD** (`components/ui/SeatViewHud.tsx`): setor (com selo de visitante), fila, cadeira, preço e
   status; as quatro métricas; a visibilidade; escolher/remover (vendida desabilitada, limite de 6);
   setas para as vizinhas; binóculo; copiar link; sair. Teclado: setas, `Enter`, `Esc`, `+`/`-`.
+- **HUD por tamanho de tela** (`SEAT_HUD_LAYOUT`): o que a pessoa quer ver é o campo. No desktop,
+  cartão completo à esquerda. No celular em pé, uma barra recolhida embaixo (setor, fila, cadeira,
+  selo Coberto/Descoberto, setas e sair; ~13% da altura em 390 × 844); tocar nela abre o cartão
+  completo, com botão "Recolher". Em tela baixa (até 500 px de altura, como o celular deitado),
+  cartão lateral compacto com rolagem própria, pela variante `short:` do `index.css`. O JavaScript
+  lê as mesmas media queries com `useMediaQuery` (`src/lib`).
 - **Vizinhas** (`seatNavigation.ts`, puro): direções de quem está sentado olhando o campo (↑ fila da
   frente, ← cadeira de número menor). Na fila vizinha, a de `a` mais próximo (as filas têm tamanhos
   diferentes nas curvas). Nunca sai do setor.

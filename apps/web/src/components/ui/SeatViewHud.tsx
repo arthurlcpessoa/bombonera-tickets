@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ORDER_RULES } from '@/config/stadium';
+import { ORDER_RULES, SEAT_HUD_LAYOUT } from '@/config/stadium';
 import { findSeat } from '@/features/seating/data/seats';
 import { getCategory, isAwaySector } from '@/features/seating/data/sectors';
 import { getSectorSeats } from '@/features/seating/lib/seatLayout';
@@ -9,9 +9,11 @@ import {
   classifyCover,
   classifyVisibility,
   seatMetrics,
+  type Cover,
   type VisibilityLevel,
 } from '@/features/seating/lib/seatView';
 import { SEAT_VIEW } from '@/config/stadium';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useSeatStore } from '@/store/useSeatStore';
 import { useSeatViewStore } from '@/store/useSeatViewStore';
 import { useStandsStore } from '@/store/useStandsStore';
@@ -38,6 +40,11 @@ const zoomFormat = new Intl.NumberFormat('pt-BR', {
 /**
  * HUD da visão do assento: os dados da cadeira, as ações e a navegação entre vizinhas.
  * Só conversa com a câmera pelo store (useSeatViewStore), como o resto da interface.
+ *
+ * Três formatos, porque o que a pessoa quer ver é o CAMPO (veja SEAT_HUD_LAYOUT):
+ *   - desktop: cartão completo à esquerda;
+ *   - celular em pé: barra fina embaixo (recolhida); tocar nela abre o cartão completo;
+ *   - celular deitado (tela baixa): cartão lateral compacto, com rolagem própria (`short:`).
  */
 export function SeatViewHud() {
   const viewingId = useSeatViewStore((s) => s.viewingSeatId);
@@ -54,13 +61,20 @@ function Hud({ seatId }: { seatId: string }) {
   const [limitHit, setLimitHit] = useState(false);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'error'>('idle');
   const panel = useRef<HTMLElement>(null);
+  // Celular em pé: começa recolhido. O estado continua ao trocar de cadeira (o Hud não remonta).
+  const barMode = useMediaQuery(SEAT_HUD_LAYOUT.barQuery);
+  // Tela baixa (celular deitado): cartão lateral compacto, com o botão de sair só com o X.
+  const short = useMediaQuery(SEAT_HUD_LAYOUT.shortQuery);
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = barMode && !expanded;
 
   const found = findSeat(seatId, model);
 
-  // Ao entrar na visão, o foco do teclado vai para o HUD (leitores de tela anunciam a cadeira).
+  // Ao entrar na visão (e ao abrir ou recolher a barra), o foco do teclado vai para o HUD:
+  // leitores de tela anunciam a cadeira, e as setas do teclado continuam funcionando.
   useEffect(() => {
     panel.current?.focus({ preventScroll: true });
-  }, []);
+  }, [collapsed]);
 
   // O aviso de limite some sozinho.
   useEffect(() => {
@@ -130,12 +144,92 @@ function Hud({ seatId }: { seatId: string }) {
   const cover = current ? classifyCover(seat.eye, current.ceilingDeg) : null;
   const { moveSeatView, exitSeatView, zoomBy, setShowSeatsForSale } = useSeatViewStore.getState();
 
+  if (collapsed) {
+    return (
+      <section
+        ref={panel}
+        tabIndex={-1}
+        aria-label="Visão do assento"
+        // Tocar em qualquer lugar da barra abre o cartão (menos nos botões de seta e de sair).
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('button:not([data-expand])')) setExpanded(true);
+        }}
+        className="glass-card animate-hud-in pointer-events-auto absolute inset-x-3 bottom-14 z-20 cursor-pointer rounded-3xl p-3 outline-none"
+      >
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            data-expand
+            aria-expanded={false}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-white/60 uppercase">
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: category.color }}
+                  aria-hidden
+                />
+                <span className="truncate">{sector.name}</span>
+                {away && <AwayBadge />}
+              </span>
+              <span
+                aria-live="polite"
+                className="block truncate text-base font-extrabold tracking-tight"
+              >
+                Fila {seat.row} · Cadeira {seat.number}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1 text-[11px] text-white/60">
+              Detalhes
+              <Chevron up />
+            </span>
+          </button>
+          <ExitButton onClick={exitSeatView} compact />
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <CoverBadge cover={cover} />
+          <div role="group" aria-label="Cadeiras vizinhas" className="flex shrink-0 gap-1">
+            <NavButton
+              label="Cadeira à esquerda"
+              disabled={!has('left')}
+              onClick={() => moveSeatView('left')}
+            >
+              <path d="M15 6l-6 6 6 6" />
+            </NavButton>
+            <NavButton
+              label="Fila da frente"
+              disabled={!has('front')}
+              onClick={() => moveSeatView('front')}
+            >
+              <path d="M6 15l6-6 6 6" />
+            </NavButton>
+            <NavButton
+              label="Fila de trás"
+              disabled={!has('back')}
+              onClick={() => moveSeatView('back')}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </NavButton>
+            <NavButton
+              label="Cadeira à direita"
+              disabled={!has('right')}
+              onClick={() => moveSeatView('right')}
+            >
+              <path d="M9 6l6 6-6 6" />
+            </NavButton>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       ref={panel}
       tabIndex={-1}
       aria-label="Visão do assento"
-      className="glass-card animate-hud-in pointer-events-auto absolute inset-x-3 bottom-12 z-20 max-h-[55dvh] overflow-y-auto rounded-3xl p-4 outline-none sm:bottom-14 md:inset-x-auto md:left-4 md:w-88 md:p-5"
+      className="glass-card animate-hud-in short:inset-x-auto short:top-3 short:bottom-14 short:left-3 short:max-h-none short:w-72 short:rounded-2xl short:p-3 pointer-events-auto absolute inset-x-3 bottom-14 z-20 max-h-[55dvh] overflow-y-auto rounded-3xl p-4 outline-none md:inset-x-auto md:left-4 md:w-88 md:p-5"
     >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -149,25 +243,25 @@ function Hud({ seatId }: { seatId: string }) {
             {away && <AwayBadge />}
           </p>
           {/* aria-live: ao trocar de cadeira, o leitor de tela lê a nova. */}
-          <h2 aria-live="polite" className="text-xl font-extrabold tracking-tight">
+          <h2 aria-live="polite" className="short:text-lg text-xl font-extrabold tracking-tight">
             Fila {seat.row} · Cadeira {seat.number}
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={exitSeatView}
-          className="-mr-1 flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white"
-        >
-          <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
-            <path
-              d="M6 6l12 12M18 6L6 18"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-          Sair da visão
-        </button>
+        <div className="-mr-1 flex shrink-0 items-center gap-1">
+          {barMode && (
+            <button
+              type="button"
+              aria-expanded
+              aria-label="Recolher detalhes"
+              title="Recolher"
+              onClick={() => setExpanded(false)}
+              className="grid size-9 cursor-pointer place-items-center rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              <Chevron />
+            </button>
+          )}
+          <ExitButton onClick={exitSeatView} compact={barMode || short} />
+        </div>
       </header>
 
       <p className="mt-1 flex items-center gap-2 text-sm">
@@ -177,7 +271,7 @@ function Hud({ seatId }: { seatId: string }) {
         <StatusChip sold={sold} selected={selected} />
       </p>
 
-      <dl className="mt-3 grid grid-cols-4 gap-1.5 text-center">
+      <dl className="short:mt-2 mt-3 grid grid-cols-4 gap-1.5 text-center">
         <Metric label="Meio-campo" value={`${meters(metrics.centerDistance)} m`} />
         <Metric label="Gol mais perto" value={`${meters(metrics.goalDistance)} m`} />
         <Metric label="Altura" value={`${meters(metrics.height)} m`} />
@@ -334,14 +428,14 @@ function Hud({ seatId }: { seatId: string }) {
           `Você pode escolher até ${ORDER_RULES.maxSeats} cadeiras por compra. Remova uma para trocar.`}
       </p>
 
-      <p className="mt-3 text-[11px] leading-relaxed text-white/45 pointer-coarse:hidden">
+      <p className="short:hidden mt-3 text-[11px] leading-relaxed text-white/45 pointer-coarse:hidden">
         Arraste para olhar em volta · <Kbd>←</Kbd>
         <Kbd>→</Kbd>
         <Kbd>↑</Kbd>
         <Kbd>↓</Kbd> trocar de cadeira · <Kbd>Enter</Kbd> escolher · <Kbd>+</Kbd>
         <Kbd>−</Kbd> binóculo · <Kbd>Esc</Kbd> sair
       </p>
-      <p className="mt-3 hidden text-[11px] text-white/45 pointer-coarse:block">
+      <p className="pointer-coarse:not-short:block mt-3 hidden text-[11px] text-white/45">
         Arraste para olhar em volta · pinça para o binóculo
       </p>
     </section>
@@ -375,6 +469,67 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dd className="text-sm font-bold tabular-nums">{value}</dd>
       <dt className="text-[10px] leading-tight text-white/55">{label}</dt>
     </div>
+  );
+}
+
+/** Botão de sair da visão. Compacto (só o X) no celular em pé, onde falta espaço. */
+function ExitButton({ onClick, compact = false }: { onClick: () => void; compact?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={compact ? 'Sair da visão' : undefined}
+      title={compact ? 'Sair da visão' : undefined}
+      className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full text-sm text-white/80 hover:bg-white/10 hover:text-white ${
+        compact ? 'size-9 justify-center' : 'px-3 py-1.5'
+      }`}
+    >
+      <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+        <path
+          d="M6 6l12 12M18 6L6 18"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+      {!compact && 'Sair da visão'}
+    </button>
+  );
+}
+
+/** Seta "v" (para baixo) ou "^" (para cima). */
+function Chevron({ up = false }: { up?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={up ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
+    </svg>
+  );
+}
+
+/** Selo curto do teto da visão, para a barra recolhida. Pulsa enquanto calcula. */
+function CoverBadge({ cover }: { cover: Cover | null }) {
+  if (!cover) {
+    return <span className="h-6 w-24 animate-pulse rounded-full bg-white/10" aria-hidden />;
+  }
+  return (
+    <span
+      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+        cover.covered ? 'bg-sky-400/15 text-sky-100' : 'bg-amber-300/15 text-amber-100'
+      }`}
+      title={cover.detail}
+    >
+      <CoverIcon covered={cover.covered} />
+      {cover.covered ? 'Coberto' : 'Descoberto'}
+    </span>
   );
 }
 

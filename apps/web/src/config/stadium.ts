@@ -146,6 +146,20 @@ export const SECTOR_PANEL_LAYOUT = {
   sheetHeight: 430,
 } as const;
 
+/**
+ * HUD da visão do assento por tamanho de tela:
+ *   - desktop: cartão completo à esquerda;
+ *   - celular em pé (`barQuery`): barra recolhida embaixo, que expande ao tocar;
+ *   - tela baixa, como o celular deitado (até `shortMaxHeight` px de altura): cartão lateral
+ *     compacto. O mesmo limite está na variante `short:` do index.css.
+ */
+const SEAT_HUD_SHORT_MAX_HEIGHT = 500;
+export const SEAT_HUD_LAYOUT = {
+  shortMaxHeight: SEAT_HUD_SHORT_MAX_HEIGHT,
+  shortQuery: `(max-height: ${SEAT_HUD_SHORT_MAX_HEIGHT}px)`,
+  barQuery: `(max-width: ${SECTOR_PANEL_LAYOUT.desktopMinWidth - 1}px) and (min-height: ${SEAT_HUD_SHORT_MAX_HEIGHT + 1}px)`,
+} as const;
+
 export const PITCH = {
   width: 68,
   length: 105,
