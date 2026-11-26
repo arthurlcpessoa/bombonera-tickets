@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 import { CURRENT_MATCH } from './domain/match';
+import { startExpireHoldsJob } from './jobs/expireHolds';
 import { InMemoryStore } from './store/InMemoryStore';
 import { buildInventory } from './store/seed';
 
@@ -35,6 +36,10 @@ app.log.warn(
   'Armazenamento em MEMÓRIA: reservas e vendas somem ao reiniciar a API. ' +
     'Isso é esperado até a Fase 5C (PostgreSQL).',
 );
+
+// Job de limpeza das reservas vencidas (a cada minuto). Para junto com a API.
+const stopExpireJob = startExpireHoldsJob(store, app.log);
+app.addHook('onClose', async () => stopExpireJob());
 
 // Ao apertar Ctrl+C (ou a hospedagem pedir para desligar), fecha com calma: termina as
 // requisições em andamento e para os jobs antes de sair.

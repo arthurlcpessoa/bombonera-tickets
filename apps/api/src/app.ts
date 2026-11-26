@@ -10,6 +10,7 @@ import Fastify, { type FastifyServerOptions } from 'fastify';
 import type { Config } from './config';
 import { registerErrorHandling } from './http/errors';
 import { healthRoutes } from './routes/health';
+import { holdRoutes } from './routes/holds';
 import { matchRoutes } from './routes/matches';
 import type { Clock, TicketingStore } from './store/TicketingStore';
 
@@ -47,6 +48,7 @@ export async function buildApp({ logger = false, ...deps }: BuildAppOptions) {
     async (api) => {
       await api.register(healthRoutes, deps);
       await api.register(matchRoutes, deps);
+      await api.register(holdRoutes, deps);
     },
     { prefix: '/api' },
   );
